@@ -1,77 +1,92 @@
 package com.webunime.mobile.data
 
+/**
+ * Pilih stream ala Wibuku: file langsung (mp4/m3u8), satu opsi per resolusi.
+ */
 object PlayerRouter {
 
-    fun preferred(players: List<PlayerServer>): List<PlayerServer> {
-        val raw = players.filter { !it.url.isNullOrBlank() }
-        if (raw.isEmpty()) return emptyList()
-        return rankAnime(raw)
+    enum class Quality(val label: String, val rank: Int) {
+        Q1080("1080p", 0),
+        Q720("720p", 1),
+        Q480("480p", 2),
+        Q320("320p", 3),
+    }
+
+    fun preferred(players: List<PlayerServer>): List<PlayerServer> = forPlayback(players)
+
+    /** Satu stream langsung per 1080 / 720 / 480 / 320. */
+    fun forPlayback(players: List<PlayerServer>): List<PlayerServer> {
+        val direct = players
+            .filter { !it.url.isNullOrBlank() && isDirectMedia(it.url!!) }
+            .sortedWith(compareBy({ sourceScore(it) }, { qualityOf(it)?.rank ?: 99 }))
+
+        val picked = linkedMapOf<Quality, PlayerServer>()
+        for (p in direct) {
+            val q = qualityOf(p) ?: continue
+            if (!picked.containsKey(q)) picked[q] = p
+        }
+
+        // Jika label tidak kebaca tapi ada direct, tetap tampilkan (maks 4).
+        if (picked.isEmpty() && direct.isNotEmpty()) {
+            return direct.distinctBy { it.url }.take(4)
+        }
+
+        return picked.entries
+            .sortedBy { it.key.rank }
+            .map { (q, server) ->
+                server.copy(label = q.label)
+            }
     }
 
     fun pickDefault(players: List<PlayerServer>): PlayerServer? =
-        preferred(players).firstOrNull()
+        forPlayback(players).firstOrNull()
+
+    fun qualityLabel(p: PlayerServer): String =
+        qualityOf(p)?.label
+            ?: p.label?.takeIf { it.contains(Regex("\\d{3,4}")) }
+            ?: "Auto"
 
     fun isDirectMedia(url: String): Boolean {
         val u = url.lowercase()
-        if (u.contains("abyssplayer") || u.contains("gn1r5n") ||
-            u.contains("turbo") || u.contains("emturbovid") || u.contains("blogger.com") ||
-            u.contains("mega.nz") || u.contains("filedon.co/embed") ||
-            u.contains("api.wibufile.com/embed") || u.contains("login.wibufile.com")
+        if (u.contains("/embed") ||
+            u.contains("abyssplayer") ||
+            u.contains("gn1r5n") ||
+            u.contains("turbo") ||
+            u.contains("emturbovid") ||
+            u.contains("blogger.com") ||
+            u.contains("mega.nz") ||
+            u.contains("filedon.co") ||
+            u.contains("api.wibufile.com/embed") ||
+            u.contains("login.wibufile.com")
         ) {
             return false
         }
-        return u.contains(".mp4") || u.contains(".m3u8") || u.contains(".webm") ||
+        return u.contains(".mp4") ||
+            u.contains(".m3u8") ||
+            u.contains(".webm") ||
             u.contains("wibufile.com/video")
     }
 
-    private fun rankAnime(raw: List<PlayerServer>): List<PlayerServer> {
-        fun score(p: PlayerServer): Int {
-            val u = (p.url ?: "").lowercase()
-            val l = (p.label ?: "").lowercase()
-            val s = (p.server ?: "").lowercase()
-            val res = resolutionRank(l, u)
-            val direct = isDirectMedia(u)
-            val isMega = u.contains("mega.nz") || s.contains("mega") || l.contains("mega")
-            val isWibu = u.contains("wibufile") || s.contains("wibu") || l.contains("wibufile")
-            val isBlog = u.contains("blogger.com") || s.contains("blogspot") || l.contains("blogspot")
-            return when {
-                // Mobile player: prioritaskan file langsung agar kontrol play/seek jalan.
-                direct && isWibu -> 10 + res
-                direct -> 20 + res
-                isWibu -> 60 + res
-                isMega -> 70 + res
-                isBlog -> 80
-                u.contains("filedon") || s.contains("vip") -> 90
-                else -> 100
-            }
-        }
-        return raw.sortedBy { score(it) }.distinctBy { it.url }
-    }
-
-    fun qualityLabel(p: PlayerServer): String {
+    fun qualityOf(p: PlayerServer): Quality? {
         val t = listOfNotNull(p.label, p.server, p.url).joinToString(" ").lowercase()
         return when {
-            t.contains("1080") || t.contains("mp4hd") -> "1080p"
-            t.contains("720") -> "720p"
-            t.contains("480") -> "480p"
-            t.contains("360") -> "360p"
-            else -> {
-                val raw = (p.label ?: p.server ?: "Auto")
-                    .replace(Regex("(?i)mega|wibufile|wibu\\s*file|blogspot|blogger|filedon"), "")
-                    .replace(Regex("\\s+"), " ")
-                    .trim()
-                raw.ifBlank { "Auto" }
-            }
+            t.contains("1080") || t.contains("fullhd") || t.contains("full-hd") -> Quality.Q1080
+            t.contains("720") || t.contains("mp4hd") -> Quality.Q720
+            t.contains("480") -> Quality.Q480
+            t.contains("360") || t.contains("320") -> Quality.Q320
+            else -> null
         }
     }
 
-    private fun resolutionRank(label: String, url: String): Int {
-        val t = "$label $url"
+    private fun sourceScore(p: PlayerServer): Int {
+        val u = (p.url ?: "").lowercase()
+        val l = (p.label ?: "").lowercase()
+        val s = (p.server ?: "").lowercase()
+        val isWibu = u.contains("wibufile") || s.contains("wibu") || l.contains("wibufile")
         return when {
-            t.contains("1080") || t.contains("mp4hd") -> 0
-            t.contains("720") -> 1
-            t.contains("480") || t.contains("360") -> 2
-            else -> 3
+            isWibu -> 10
+            u.contains(".mp4") || u.contains(".m3u8") -> 20
+            else -> 50
         }
     }
 }

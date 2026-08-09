@@ -1,18 +1,12 @@
 ﻿package com.webunime.mobile.ui.player
 
-import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -80,8 +74,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.EpisodeSummary
@@ -164,6 +161,7 @@ private fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
+    var playbackError by remember { mutableStateOf<String?>(null) }
 
     val episodeNumbers = remember(episodes, currentEpisode) {
         val nums = episodes.mapNotNull { it.episode }.distinct().sorted()
@@ -188,16 +186,17 @@ private fun PlayerScreen(
         error = null
         bottomSheet = BottomSheet.None
         controlsVisible = true
+        playbackError = null
         runCatching { loadEpisode(slug, currentEpisode) }
             .onSuccess { payload ->
                 episodeTitle = payload.episode?.title
                     ?: payload.judul
                     ?: "Episode $currentEpisode"
-                players = PlayerRouter.preferred(payload.episode?.players.orEmpty())
-                selectedServer = players.indexOfFirst { p ->
-                    !p.url.isNullOrBlank() && PlayerRouter.isDirectMedia(p.url!!)
-                }.takeIf { it >= 0 } ?: 0
-                if (players.isEmpty()) error = "Tidak ada server player"
+                players = PlayerRouter.forPlayback(payload.episode?.players.orEmpty())
+                selectedServer = 0
+                if (players.isEmpty()) {
+                    error = "Tidak ada stream langsung (mp4). Coba episode lain."
+                }
             }
             .onFailure { error = it.message }
         loading = false
@@ -274,6 +273,19 @@ private fun PlayerScreen(
                             url = currentUrl,
                             onPlayerReady = { exoPlayer = it },
                             onPlayerCleared = { if (exoPlayer === it) exoPlayer = null },
+                            onError = { playbackError = it },
+                        )
+                    }
+                    playbackError?.let { msg ->
+                        Text(
+                            text = msg,
+                            color = Color(0xFFFF8A80),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(12.dp)
+                                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
                         )
                     }
                 }
@@ -705,61 +717,73 @@ private fun PlaybackSurface(
     url: String,
     onPlayerReady: (ExoPlayer) -> Unit,
     onPlayerCleared: (ExoPlayer) -> Unit,
+    onError: (String?) -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val direct = remember(url) { PlayerRouter.isDirectMedia(url) }
 
-    if (direct) {
-        val player = remember(url) {
-            ExoPlayer.Builder(context).build().also {
+    val player = remember(url) {
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent(
+                "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+            )
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Referer" to "https://samehadaku.care/",
+                    "Origin" to "https://samehadaku.care",
+                    "Accept" to "*/*",
+                ),
+            )
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(30_000)
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(httpFactory)
+
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+            .also {
                 it.setMediaItem(MediaItem.fromUri(url))
                 it.prepare()
                 it.playWhenReady = true
             }
-        }
-        DisposableEffect(player) {
-            onPlayerReady(player)
-            onDispose {
-                onPlayerCleared(player)
-                player.release()
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                onError(error.message ?: "Gagal memutar video")
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) onError(null)
             }
         }
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    this.player = player
-                    useController = false
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                }
-            },
-            update = { view ->
-                if (view.player !== player) view.player = player
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-    } else {
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                    @SuppressLint("SetJavaScriptEnabled")
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.mediaPlaybackRequiresUserGesture = false
-                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    webChromeClient = WebChromeClient()
-                    webViewClient = WebViewClient()
-                    loadUrl(url)
-                }
-            },
-            update = { it.loadUrl(url) },
-            modifier = Modifier.fillMaxSize(),
-        )
+        player.addListener(listener)
+        onPlayerReady(player)
+        onDispose {
+            player.removeListener(listener)
+            onPlayerCleared(player)
+            player.release()
+        }
     }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                this.player = player
+                useController = false
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            }
+        },
+        update = { view ->
+            if (view.player !== player) view.player = player
+        },
+        modifier = Modifier.fillMaxSize(),
+    )
 }
