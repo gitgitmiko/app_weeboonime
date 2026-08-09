@@ -77,7 +77,7 @@ fun HomeScreen(
             ) {
                 item {
                     Text(
-                        text = "WEBUNIME",
+                        text = "Weeboonime",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

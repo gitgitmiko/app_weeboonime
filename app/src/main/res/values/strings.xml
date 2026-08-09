@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WEBUNIME</string>
+    <string name="app_name">Weeboonime</string>
     <string name="update_title">Update tersedia</string>
     <string name="update_message">Versi %1$s siap diunduh.\n%2$s</string>
     <string name="update_now">Update</string>
