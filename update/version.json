@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 10,
-  "versionName": "0.1.9",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.9/Weeboonime-v0.1.9.apk",
-  "changelog": "Alur pra-login ala Wibuku: Welcome (swipe up), Login Google/Tester, Privacy Policy & Terms of Service."
+  "versionCode": 11,
+  "versionName": "0.2.0",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.0/Weeboonime-v0.2.0.apk",
+  "changelog": "UI/UX 5-tab mendekati Wibuku: Home grid+search, Jadwal Tayang, Riwayat timeline, Subscribed & Timeline empty state."
 }

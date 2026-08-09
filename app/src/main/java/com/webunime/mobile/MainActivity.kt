@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.rounded.AccessTime
-import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -30,12 +33,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.webunime.mobile.ui.theme.WuColors
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -69,11 +74,10 @@ private val bottomTabs = listOf(
     BottomTab("home", "Home", Icons.Filled.Home),
     BottomTab("schedule", "Jadwal", Icons.Outlined.DateRange),
     BottomTab("history", "History", Icons.Rounded.AccessTime),
-    BottomTab("subscribed", "Subscribed", Icons.Rounded.Subscriptions),
-    BottomTab("timeline", "Timeline", Icons.Filled.People),
+    BottomTab("subscribed", "Subscribed", Icons.Filled.VideoLibrary),
+    BottomTab("timeline", "Timeline", Icons.Filled.Person),
 )
 
-private val bottomBarBg = Color(0xFF17181A)
 private val authBg = Color(0xFF151719)
 
 class MainActivity : ComponentActivity() {
@@ -169,16 +173,18 @@ class MainActivity : ComponentActivity() {
                             val showBottom = route in bottomTabs.map { it.route }
 
                             Scaffold(
-                                containerColor = MaterialTheme.colorScheme.background,
+                                containerColor = WuColors.Bg,
                                 bottomBar = {
                                     if (showBottom) {
                                         NavigationBar(
-                                            containerColor = bottomBarBg,
+                                            containerColor = WuColors.NavBar,
                                             contentColor = Color.White,
+                                            tonalElevation = 0.dp,
                                         ) {
                                             bottomTabs.forEach { tab ->
+                                                val selected = route == tab.route
                                                 NavigationBarItem(
-                                                    selected = route == tab.route,
+                                                    selected = selected,
                                                     onClick = {
                                                         nav.navigate(tab.route) {
                                                             popUpTo(nav.graph.findStartDestination().id) {
@@ -188,15 +194,33 @@ class MainActivity : ComponentActivity() {
                                                             restoreState = true
                                                         }
                                                     },
-                                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                                    icon = {
+                                                        if (tab.route == "timeline") {
+                                                            Box(
+                                                                Modifier
+                                                                    .size(26.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(WuColors.SurfaceAlt),
+                                                                contentAlignment = Alignment.Center,
+                                                            ) {
+                                                                Icon(
+                                                                    tab.icon,
+                                                                    contentDescription = tab.label,
+                                                                    modifier = Modifier.size(16.dp),
+                                                                )
+                                                            }
+                                                        } else {
+                                                            Icon(tab.icon, contentDescription = tab.label)
+                                                        }
+                                                    },
                                                     label = { Text(tab.label) },
                                                     alwaysShowLabel = false,
                                                     colors = NavigationBarItemDefaults.colors(
                                                         selectedIconColor = Color.White,
                                                         selectedTextColor = Color.White,
-                                                        unselectedIconColor = Color(0xFFA0A0A1),
-                                                        unselectedTextColor = Color(0xFFA0A0A1),
-                                                        indicatorColor = Color(0xFF2B2C2F),
+                                                        unselectedIconColor = WuColors.Muted,
+                                                        unselectedTextColor = WuColors.Muted,
+                                                        indicatorColor = WuColors.NavActive,
                                                     ),
                                                 )
                                             }
@@ -213,6 +237,7 @@ class MainActivity : ComponentActivity() {
                                         HomeScreen(
                                             onOpenAnime = { slug -> nav.navigate("detail/$slug") },
                                             onOpenSearch = { nav.navigate("search") },
+                                            onOpenSchedule = { nav.navigate("schedule") },
                                         )
                                     }
                                     composable("schedule") {

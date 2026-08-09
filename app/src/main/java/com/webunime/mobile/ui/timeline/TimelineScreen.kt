@@ -6,107 +6,122 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.webunime.mobile.WebunimeApp
+import com.webunime.mobile.ui.theme.WuColors
 
-private data class DummyTimeline(
-    val user: String,
-    val action: String,
-    val time: String,
-)
-
-private val dummyFeed = listOf(
-    DummyTimeline("WeeFan_01", "baru saja menonton Solo Leveling Ep 8", "2 jam lalu"),
-    DummyTimeline("MikoOtaku", "subscribe Frieren", "5 jam lalu"),
-    DummyTimeline("NekoNight", "selesai binge Dandadan", "Kemarin"),
-    DummyTimeline("AoiWatch", "menambahkan Kaiju No. 8 ke list", "Kemarin"),
-    DummyTimeline("RikuStream", "beri rating 9/10 untuk Bocchi the Rock", "2 hari lalu"),
-)
-
-/**
- * Tab Timeline (UI ala Wibuku / sosial).
- * Belum ada backend — tampilan dummy.
- */
 @Composable
 fun TimelineScreen(
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    Column(
+    val app = LocalContext.current.applicationContext as WebunimeApp
+    val name = app.session.displayName.ifBlank { "Weeboonime User" }
+    val initial = name.take(1).uppercase()
+
+    Box(
         Modifier
             .fillMaxSize()
+            .background(WuColors.Bg)
             .padding(contentPadding),
     ) {
-        Text(
-            text = "Timeline",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-        Text(
-            text = "Aktivitas komunitas segera hadir. Contoh feed di bawah.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-        )
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(WuColors.SurfaceAlt),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text("#11040801", color = WuColors.Muted, fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Lvl. 1",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(WuColors.SurfaceAlt)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
+                }
+                IconButton(onClick = { /* dummy settings */ }) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
+                }
+            }
 
-        LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Belum ada aktivitas teman\nKamu bisa menambahkan teman dari komentar orang lain di anime favoritmu",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 36.dp),
+                )
+            }
+        }
+
+        Column(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(dummyFeed) { item ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF1E1F22))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF2B2C2F)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            item.user.take(1),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            item.user,
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        Text(
-                            item.action,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                        Text(
-                            item.time,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
+            FloatingActionButton(
+                onClick = { },
+                containerColor = Color.White,
+                contentColor = Color.Black,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(Icons.Default.People, contentDescription = "Teman")
+            }
+            FloatingActionButton(
+                onClick = { },
+                containerColor = Color.White,
+                contentColor = Color.Black,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat")
             }
         }
     }
