@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 9,
-  "versionName": "0.1.8",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.8/Weeboonime-v0.1.8.apk",
-  "changelog": "UI 5-tab ala Wibuku: Home, Jadwal, History, Subscribed, Timeline. Cari pindah ke ikon Home. Riwayat menonton lokal. Subscribed & Timeline masih dummy."
+  "versionCode": 10,
+  "versionName": "0.1.9",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.9/Weeboonime-v0.1.9.apk",
+  "changelog": "Alur pra-login ala Wibuku: Welcome (swipe up), Login Google/Tester, Privacy Policy & Terms of Service."
 }
