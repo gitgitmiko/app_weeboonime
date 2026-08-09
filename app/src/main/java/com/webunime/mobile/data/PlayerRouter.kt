@@ -45,6 +45,23 @@ object PlayerRouter {
         return raw.sortedBy { score(it) }.distinctBy { it.url }
     }
 
+    fun qualityLabel(p: PlayerServer): String {
+        val t = listOfNotNull(p.label, p.server, p.url).joinToString(" ").lowercase()
+        return when {
+            t.contains("1080") || t.contains("mp4hd") -> "1080p"
+            t.contains("720") -> "720p"
+            t.contains("480") -> "480p"
+            t.contains("360") -> "360p"
+            else -> {
+                val raw = (p.label ?: p.server ?: "Auto")
+                    .replace(Regex("(?i)mega|wibufile|wibu\\s*file|blogspot|blogger|filedon"), "")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                raw.ifBlank { "Auto" }
+            }
+        }
+    }
+
     private fun resolutionRank(label: String, url: String): Int {
         val t = "$label $url"
         return when {

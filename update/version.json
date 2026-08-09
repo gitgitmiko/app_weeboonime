@@ -1,6 +1,6 @@
 {
-  "versionCode": 2,
-  "versionName": "0.1.1",
-  "apkUrl": "https://drive.usercontent.google.com/download?id=1QOX05RxFaBnWqJibB94iLRJagrhA8Nem&export=download&confirm=t",
-  "changelog": "Nama app Weeboonime. Player portrait + list episode. Pilih server, speed, repeat, fullscreen di dalam player."
+  "versionCode": 3,
+  "versionName": "0.1.2",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.2/Weeboonime-v0.1.2.apk",
+  "changelog": "Player ala Wibuku: di bawah status bar, play/pause, ±10 detik, prev/next episode, resolusi, speed, AutoNext, fullscreen."
 }
