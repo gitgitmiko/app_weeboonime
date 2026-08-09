@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "0.1.6",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.6/Weeboonime-v0.1.6.apk",
-  "changelog": "Perbaiki OTA: version.json tanpa BOM + dialog update setelah splash."
+  "versionCode": 8,
+  "versionName": "0.1.7",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.7/Weeboonime-v0.1.7.apk",
+  "changelog": "Perbaiki deteksi update (GitHub API, anti-cache CDN)."
 }

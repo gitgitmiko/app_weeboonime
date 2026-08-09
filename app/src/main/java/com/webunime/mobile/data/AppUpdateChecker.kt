@@ -51,12 +51,17 @@ class AppUpdateChecker(private val context: Context) {
     suspend fun fetchAvailableUpdate(): AppUpdateInfo? = withContext(Dispatchers.IO) {
         val bust = System.currentTimeMillis()
         val urls = listOf(
-            "$VERSION_JSON_URL?t=$bust",
+            VERSION_JSON_GITHUB_API,
             "$VERSION_JSON_JSDELIVR?t=$bust",
+            "$VERSION_JSON_URL?t=$bust",
         )
         var info: AppUpdateInfo? = null
         for (url in urls) {
-            info = fetchVersionJson(url)
+            info = if (url == VERSION_JSON_GITHUB_API) {
+                fetchVersionJsonFromGithubApi()
+            } else {
+                fetchVersionJson(url)
+            }
             if (info != null) break
         }
         val resolved = info ?: return@withContext null
@@ -69,11 +74,33 @@ class AppUpdateChecker(private val context: Context) {
         resolved
     }
 
+    private fun fetchVersionJsonFromGithubApi(): AppUpdateInfo? {
+        return runCatching {
+            val request = Request.Builder()
+                .url(VERSION_JSON_GITHUB_API)
+                .header("User-Agent", "Weeboonime-Mobile/${BuildConfig.VERSION_NAME}")
+                .header("Accept", "application/vnd.github.raw+json")
+                .header("Cache-Control", "no-cache")
+                .get()
+                .build()
+            val body = client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "GitHub API HTTP ${response.code}")
+                    return null
+                }
+                response.body?.string().orEmpty()
+            }
+            parseUpdateInfo(body)
+        }.onFailure {
+            Log.w(TAG, "GitHub API version.json failed: ${it.message}")
+        }.getOrNull()
+    }
+
     private fun fetchVersionJson(url: String): AppUpdateInfo? {
         return runCatching {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "WEBUNIME-Mobile/${BuildConfig.VERSION_NAME}")
+                .header("User-Agent", "Weeboonime-Mobile/${BuildConfig.VERSION_NAME}")
                 .header("Cache-Control", "no-cache, no-store, must-revalidate")
                 .header("Pragma", "no-cache")
                 .get()
@@ -93,7 +120,10 @@ class AppUpdateChecker(private val context: Context) {
     }
 
     private fun parseUpdateInfo(body: String): AppUpdateInfo? {
-        val clean = body.trim().removePrefix("\uFEFF")
+        // Buang BOM / karakter rusak sebelum '{'.
+        val start = body.indexOf('{')
+        if (start < 0) return null
+        val clean = body.substring(start).trim().removePrefix("\uFEFF")
         runCatching { adapter.fromJson(clean) }.getOrNull()?.let { return it }
         return runCatching {
             val o = JSONObject(clean)
@@ -187,5 +217,9 @@ class AppUpdateChecker(private val context: Context) {
 
         const val VERSION_JSON_JSDELIVR =
             "https://cdn.jsdelivr.net/gh/gitgitmiko/app_weeboonime@main/update/version.json"
+
+        /** Sumber utama — jarang kena CDN stale seperti raw.githubusercontent. */
+        const val VERSION_JSON_GITHUB_API =
+            "https://api.github.com/repos/gitgitmiko/app_weeboonime/contents/update/version.json?ref=main"
     }
 }
