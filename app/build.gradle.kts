@@ -22,9 +22,22 @@ android {
         )
     }
 
+    signingConfigs {
+        // Samakan dengan APK lama (Android Debug) supaya OTA/update tidak "package invalid".
+        // Ganti ke keystore production sendiri sebelum publish Play Store.
+        create("release") {
+            val debugKs = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storeFile = debugKs
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
