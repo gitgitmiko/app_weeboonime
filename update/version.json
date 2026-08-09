@@ -1,6 +1,6 @@
 {
-  "versionCode": 1,
-  "versionName": "0.1.0",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.0/WEBUNIME-Mobile-v0.1.0.apk",
-  "changelog": "Rilis awal WEBUNIME Mobile (MVP)."
+  "versionCode": 2,
+  "versionName": "0.1.1",
+  "apkUrl": "REPLACE_WITH_GDRIVE_DIRECT_DOWNLOAD_URL",
+  "changelog": "Nama app Weeboonime. Player portrait + list episode. Pilih server, speed, repeat, fullscreen di dalam player."
 }
