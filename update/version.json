@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 5,
-  "versionName": "0.1.4",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.4/Weeboonime-v0.1.4.apk",
-  "changelog": "Player ala Wibuku: hanya 1 stream MP4 per resolusi (1080/720/480/320) + header agar play jalan."
+  "versionCode": 6,
+  "versionName": "0.1.5",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.5/Weeboonime-v0.1.5.apk",
+  "changelog": "Logo Weeboonime + splash loading. Perbaikan tombol play (playWhenReady + PlayerView tidak makan touch)."
 }

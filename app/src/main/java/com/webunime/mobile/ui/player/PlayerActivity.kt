@@ -211,7 +211,9 @@ private fun PlayerScreen(
         while (true) {
             positionMs = player.currentPosition.coerceAtLeast(0L)
             durationMs = player.duration.coerceAtLeast(0L)
-            isPlaying = player.isPlaying
+            isPlaying = player.playWhenReady &&
+                player.playbackState != Player.STATE_ENDED &&
+                player.playbackState != Player.STATE_IDLE
             delay(400)
         }
     }
@@ -367,10 +369,7 @@ private fun PlayerScreen(
                     Row(
                         Modifier
                             .align(Alignment.Center)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { /* block scrim */ },
+                            .padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -392,23 +391,25 @@ private fun PlayerScreen(
                             onClick = {
                                 val p = exoPlayer ?: return@IconButton
                                 when {
-                                    p.isPlaying -> p.pause()
+                                    p.playbackState == Player.STATE_IDLE -> {
+                                        p.prepare()
+                                        p.playWhenReady = true
+                                    }
                                     p.playbackState == Player.STATE_ENDED -> {
                                         p.seekTo(0)
-                                        p.play()
+                                        p.playWhenReady = true
                                     }
-                                    else -> p.play()
+                                    else -> p.playWhenReady = !p.playWhenReady
                                 }
                             },
-                            enabled = exoPlayer != null,
                             modifier = Modifier
                                 .size(72.dp)
-                                .background(Color.White.copy(alpha = 0.18f), CircleShape),
+                                .background(Color.White.copy(alpha = 0.22f), CircleShape),
                         ) {
                             Icon(
                                 if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = if (isPlaying) "Pause" else "Play",
-                                tint = if (exoPlayer != null) Color.White else Color.White.copy(alpha = 0.35f),
+                                tint = Color.White,
                                 modifier = Modifier.size(40.dp),
                             )
                         }
@@ -775,10 +776,18 @@ private fun PlaybackSurface(
             PlayerView(ctx).apply {
                 this.player = player
                 useController = false
+                controllerAutoShow = false
+                controllerHideOnTouch = false
+                isClickable = false
+                isFocusable = false
+                isFocusableInTouchMode = false
+                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
+                // Jangan makan gesture Compose (play overlay).
+                setOnTouchListener { _, _ -> false }
             }
         },
         update = { view ->
