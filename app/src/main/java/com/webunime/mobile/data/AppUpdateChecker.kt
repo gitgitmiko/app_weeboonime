@@ -93,9 +93,10 @@ class AppUpdateChecker(private val context: Context) {
     }
 
     private fun parseUpdateInfo(body: String): AppUpdateInfo? {
-        adapter.fromJson(body)?.let { return it }
+        val clean = body.trim().removePrefix("\uFEFF")
+        runCatching { adapter.fromJson(clean) }.getOrNull()?.let { return it }
         return runCatching {
-            val o = JSONObject(body.trim().removePrefix("\uFEFF"))
+            val o = JSONObject(clean)
             AppUpdateInfo(
                 versionCode = o.getInt("versionCode"),
                 versionName = o.getString("versionName"),

@@ -19,6 +19,7 @@ import com.webunime.mobile.R
 import com.webunime.mobile.data.AppUpdateChecker
 import com.webunime.mobile.data.AppUpdateInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -36,6 +37,8 @@ fun AppUpdateHost(activity: ComponentActivity) {
     var downloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        // Tunggu splash selesai supaya dialog update terlihat.
+        delay(2000)
         val info = runCatching { checker.fetchAvailableUpdate() }.getOrNull()
         if (info != null) {
             available = info
