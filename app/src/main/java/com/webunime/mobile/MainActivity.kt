@@ -27,6 +27,7 @@ import com.webunime.mobile.ui.detail.DetailScreen
 import com.webunime.mobile.ui.home.HomeScreen
 import com.webunime.mobile.ui.search.SearchScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
+import com.webunime.mobile.ui.update.AppUpdateHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,6 +35,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WebunimeTheme {
+                AppUpdateHost(activity = this@MainActivity)
+
                 val nav = rememberNavController()
                 val backStack by nav.currentBackStackEntryAsState()
                 val route = backStack?.destination?.route.orEmpty()

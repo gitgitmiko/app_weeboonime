@@ -30,3 +30,29 @@ Atau buka folder di Android Studio → Run di emulator/HP.
 - Jadwal rilis Senin–Minggu
 - Detail + daftar episode
 - Player: ExoPlayer (URL media langsung) / WebView (embed)
+- Update in-app (OTA) seperti app TV
+
+## Update in-app (development)
+
+App mengecek `update/version.json` di repo ini (GitHub raw + jsDelivr).
+Jika `versionCode` remote > yang terpasang, user bisa unduh & install APK langsung dari app.
+
+### Rilis update baru
+
+1. Naikkan `versionCode` / `versionName` di `app/build.gradle.kts`
+2. Build release/debug APK, rename misalnya `WEBUNIME-Mobile-v0.1.1.apk`
+3. Upload APK ke GitHub Releases: https://github.com/gitgitmiko/app_weeboonime/releases
+4. Update `update/version.json`:
+
+```json
+{
+  "versionCode": 2,
+  "versionName": "0.1.1",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.1/WEBUNIME-Mobile-v0.1.1.apk",
+  "changelog": "Perbaikan …"
+}
+```
+
+5. Commit + push `version.json` ke `main`
+
+HP yang sudah pasang versi lama akan mendapat dialog **Update tersedia** saat buka app.
