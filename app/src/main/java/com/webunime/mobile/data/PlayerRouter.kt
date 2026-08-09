@@ -30,14 +30,17 @@ object PlayerRouter {
             val l = (p.label ?: "").lowercase()
             val s = (p.server ?: "").lowercase()
             val res = resolutionRank(l, u)
+            val direct = isDirectMedia(u)
             val isMega = u.contains("mega.nz") || s.contains("mega") || l.contains("mega")
             val isWibu = u.contains("wibufile") || s.contains("wibu") || l.contains("wibufile")
             val isBlog = u.contains("blogger.com") || s.contains("blogspot") || l.contains("blogspot")
             return when {
-                isMega -> 10 + res
-                isWibu && (u.contains("wibufile.com/video") || u.contains(".mp4")) -> 40 + res
-                isWibu -> 50 + res
-                isBlog -> 70
+                // Mobile player: prioritaskan file langsung agar kontrol play/seek jalan.
+                direct && isWibu -> 10 + res
+                direct -> 20 + res
+                isWibu -> 60 + res
+                isMega -> 70 + res
+                isBlog -> 80
                 u.contains("filedon") || s.contains("vip") -> 90
                 else -> 100
             }

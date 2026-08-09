@@ -174,7 +174,6 @@ private fun PlayerScreen(
     val nextEpisode = episodeNumbers.getOrNull(epIndex + 1)
 
     val currentUrl = players.getOrNull(selectedServer)?.url.orEmpty()
-    val directMedia = currentUrl.isNotBlank() && PlayerRouter.isDirectMedia(currentUrl)
 
     LaunchedEffect(slug) {
         runCatching { loadAnime(slug) }
@@ -195,7 +194,9 @@ private fun PlayerScreen(
                     ?: payload.judul
                     ?: "Episode $currentEpisode"
                 players = PlayerRouter.preferred(payload.episode?.players.orEmpty())
-                selectedServer = 0
+                selectedServer = players.indexOfFirst { p ->
+                    !p.url.isNullOrBlank() && PlayerRouter.isDirectMedia(p.url!!)
+                }.takeIf { it >= 0 } ?: 0
                 if (players.isEmpty()) error = "Tidak ada server player"
             }
             .onFailure { error = it.message }
@@ -278,21 +279,17 @@ private fun PlayerScreen(
                 }
             }
 
-            // Tap area to toggle controls
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        if (bottomSheet != BottomSheet.None) {
-                            bottomSheet = BottomSheet.None
-                        } else {
-                            controlsVisible = !controlsVisible
-                        }
-                    },
-            )
+            // Tap kosong: tampilkan kontrol (saat kontrol sembunyi)
+            if (!controlsVisible && bottomSheet == BottomSheet.None) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { controlsVisible = true },
+                )
+            }
 
             androidx.compose.animation.AnimatedVisibility(
                 visible = controlsVisible || bottomSheet != BottomSheet.None,
@@ -301,6 +298,22 @@ private fun PlayerScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 Box(Modifier.fillMaxSize()) {
+                    // Scrim: tap area kosong menutup kontrol
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) {
+                                if (bottomSheet != BottomSheet.None) {
+                                    bottomSheet = BottomSheet.None
+                                } else {
+                                    controlsVisible = false
+                                }
+                            },
+                    )
+
                     // Top gradient + back
                     Row(
                         Modifier
@@ -311,7 +324,11 @@ private fun PlayerScreen(
                                     listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent),
                                 ),
                             )
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
+                            .padding(horizontal = 2.dp, vertical = 2.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { /* block scrim */ },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = {
@@ -336,7 +353,12 @@ private fun PlayerScreen(
 
                     // Center transport
                     Row(
-                        Modifier.align(Alignment.Center),
+                        Modifier
+                            .align(Alignment.Center)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { /* block scrim */ },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -349,34 +371,38 @@ private fun PlayerScreen(
                         }
                         TransportButton(
                             icon = Icons.Default.Replay10,
-                            enabled = directMedia && exoPlayer != null,
+                            enabled = exoPlayer != null,
                             size = 44.dp,
                         ) {
                             exoPlayer?.let { it.seekTo((it.currentPosition - 10_000).coerceAtLeast(0)) }
                         }
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.18f),
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clickable(enabled = directMedia && exoPlayer != null) {
-                                    exoPlayer?.let { p ->
-                                        if (p.isPlaying) p.pause() else p.play()
+                        IconButton(
+                            onClick = {
+                                val p = exoPlayer ?: return@IconButton
+                                when {
+                                    p.isPlaying -> p.pause()
+                                    p.playbackState == Player.STATE_ENDED -> {
+                                        p.seekTo(0)
+                                        p.play()
                                     }
-                                },
+                                    else -> p.play()
+                                }
+                            },
+                            enabled = exoPlayer != null,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(Color.White.copy(alpha = 0.18f), CircleShape),
                         ) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Icon(
-                                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(36.dp),
-                                )
-                            }
+                            Icon(
+                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = if (exoPlayer != null) Color.White else Color.White.copy(alpha = 0.35f),
+                                modifier = Modifier.size(40.dp),
+                            )
                         }
                         TransportButton(
                             icon = Icons.Default.Forward10,
-                            enabled = directMedia && exoPlayer != null,
+                            enabled = exoPlayer != null,
                             size = 44.dp,
                         ) {
                             exoPlayer?.let {
@@ -403,9 +429,13 @@ private fun PlayerScreen(
                                     listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
                                 ),
                             )
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { /* block scrim */ },
                     ) {
-                        if (directMedia && durationMs > 0) {
+                        if (exoPlayer != null && durationMs > 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth(),
@@ -471,12 +501,12 @@ private fun PlayerScreen(
                                         BottomSheet.Speed
                                     }
                                 },
-                                enabled = directMedia,
+                                enabled = exoPlayer != null,
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             ) {
                                 Text(
                                     text = speedLabel(playbackSpeed),
-                                    color = if (directMedia) Color.White else Color.White.copy(alpha = 0.4f),
+                                    color = if (exoPlayer != null) Color.White else Color.White.copy(alpha = 0.4f),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                 )

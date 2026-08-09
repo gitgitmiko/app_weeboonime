@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "0.1.2",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.2/Weeboonime-v0.1.2.apk",
-  "changelog": "Player ala Wibuku: di bawah status bar, play/pause, ±10 detik, prev/next episode, resolusi, speed, AutoNext, fullscreen."
+  "versionCode": 4,
+  "versionName": "0.1.3",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.3/Weeboonime-v0.1.3.apk",
+  "changelog": "Perbaiki tombol play/pause: prioritaskan stream langsung, kontrol tidak terblokir overlay."
 }
