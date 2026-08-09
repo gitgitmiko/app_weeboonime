@@ -4,10 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +37,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onOpenAnime: (slug: String) -> Unit,
+    onOpenSearch: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
@@ -76,12 +83,24 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
-                    Text(
-                        text = "Weeboonime",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Weeboonime",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                        )
+                        IconButton(onClick = onOpenSearch) {
+                            Icon(Icons.Default.Search, contentDescription = "Cari")
+                        }
+                    }
                 }
                 if (data.latest.isNotEmpty()) {
                     item { SectionTitle("Anime Terbaru") }
@@ -119,7 +138,7 @@ fun HomeScreen(
                             items = data.movies,
                             titleOf = { it.displayTitle() },
                             thumbOf = { it.thumbnail },
-                            subtitleOf = { it.rating?.let { r -> "â˜… $r" } },
+                            subtitleOf = { it.rating?.let { r -> "★ $r" } },
                             onClick = { item ->
                                 item.slug?.let(onOpenAnime)
                             },

@@ -132,7 +132,7 @@ fun DetailScreen(
                                 Text(data.displayTitle(), style = MaterialTheme.typography.titleLarge)
                                 Spacer(Modifier.height(8.dp))
                                 data.rating?.let {
-                                    Text("â˜… $it", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("★ $it", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 data.genre?.takeIf { it.isNotEmpty() }?.let {
                                     Text(
@@ -158,6 +158,12 @@ fun DetailScreen(
                         val n = ep.episode ?: return@items
                         Button(
                             onClick = {
+                                app.watchHistory.record(
+                                    slug = slug,
+                                    title = data.displayTitle(),
+                                    thumbnail = data.thumbnail.orEmpty(),
+                                    episode = n,
+                                )
                                 val i = Intent(context, PlayerActivity::class.java).apply {
                                     putExtra(PlayerActivity.EXTRA_SLUG, slug)
                                     putExtra(PlayerActivity.EXTRA_EPISODE, n)

@@ -1,6 +1,6 @@
-{
-  "versionCode": 8,
-  "versionName": "0.1.7",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.7/Weeboonime-v0.1.7.apk",
-  "changelog": "Perbaiki deteksi update (GitHub API, anti-cache CDN)."
+﻿{
+  "versionCode": 9,
+  "versionName": "0.1.8",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.8/Weeboonime-v0.1.8.apk",
+  "changelog": "UI 5-tab ala Wibuku: Home, Jadwal, History, Subscribed, Timeline. Cari pindah ke ikon Home. Riwayat menonton lokal. Subscribed & Timeline masih dummy."
 }
