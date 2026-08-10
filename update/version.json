@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 13,
-  "versionName": "0.2.2",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.2/Weeboonime-v0.2.2.apk",
-  "changelog": "Firebase Auth/Firestore + ekonomi kunci/gem/Premium. Login Google nyata. Gate nonton 1 kunci/episode."
+  "versionCode": 14,
+  "versionName": "0.2.3",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.3/Weeboonime-v0.2.3.apk",
+  "changelog": "Perbaiki login Google: tidak blokir di sync Firestore + pesan error lebih jelas."
 }

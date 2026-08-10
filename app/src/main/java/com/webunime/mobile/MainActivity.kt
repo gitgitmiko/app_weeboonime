@@ -100,22 +100,58 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(app.session.isLoggedIn || app.authRepository.isSignedIn())
                 }
 
+                var loginBusy by remember { mutableStateOf(false) }
+
                 val googleSignInLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult(),
                 ) { result ->
                     scope.launch {
-                        val res = app.authRepository.handleGoogleSignInResult(result.data)
-                        res.onSuccess {
-                            val user = app.authRepository.currentUser
-                            app.session.loginAs(
-                                user?.displayName ?: user?.email ?: "Google User",
-                            )
-                            runCatching { app.userRepository.pullCloudIfSignedIn() }
-                            loggedIn = true
-                        }.onFailure {
+                        try {
+                            if (result.resultCode != android.app.Activity.RESULT_OK) {
+                                loginBusy = false
+                                Toast.makeText(
+                                    activity,
+                                    "Login Google dibatalkan",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                return@launch
+                            }
+                            val res = app.authRepository.handleGoogleSignInResult(result.data)
+                            res.onSuccess {
+                                val user = app.authRepository.currentUser
+                                app.session.loginAs(
+                                    user?.displayName ?: user?.email ?: "Google User",
+                                )
+                                // Jangan blokir UI: sync Firestore di background
+                                loggedIn = true
+                                loginBusy = false
+                                Toast.makeText(
+                                    activity,
+                                    "Login berhasil",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                launch {
+                                    runCatching { app.userRepository.pullCloudIfSignedIn() }
+                                        .onFailure {
+                                            android.util.Log.w(
+                                                "WebunimeAuth",
+                                                "Sync cloud gagal (lokal tetap jalan): ${it.message}",
+                                            )
+                                        }
+                                }
+                            }.onFailure {
+                                loginBusy = false
+                                Toast.makeText(
+                                    activity,
+                                    it.message ?: "Login Google gagal",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        } catch (t: Throwable) {
+                            loginBusy = false
                             Toast.makeText(
                                 activity,
-                                it.message ?: "Login Google gagal",
+                                t.message ?: "Login error",
                                 Toast.LENGTH_LONG,
                             ).show()
                         }
@@ -172,15 +208,21 @@ class MainActivity : ComponentActivity() {
                                 composable("login") {
                                     LoginScreen(
                                         onGoogleLogin = {
-                                            val intent = app.authRepository.signInIntent(activity)
-                                            if (intent == null) {
-                                                Toast.makeText(
-                                                    activity,
-                                                    "Cek GOOGLE_WEB_CLIENT_ID / google-services.json",
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                            } else {
-                                                googleSignInLauncher.launch(intent)
+                                            if (loginBusy) return@LoginScreen
+                                            scope.launch {
+                                                loginBusy = true
+                                                app.authRepository.prepareSignIn(activity)
+                                                val intent = app.authRepository.signInIntent(activity)
+                                                if (intent == null) {
+                                                    loginBusy = false
+                                                    Toast.makeText(
+                                                        activity,
+                                                        "Cek GOOGLE_WEB_CLIENT_ID / google-services.json",
+                                                        Toast.LENGTH_LONG,
+                                                    ).show()
+                                                } else {
+                                                    googleSignInLauncher.launch(intent)
+                                                }
                                             }
                                         },
                                         onTesterLogin = {

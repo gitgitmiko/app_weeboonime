@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 private val Context.userStore by preferencesDataStore("webunime_user_economy")
 
@@ -166,7 +167,11 @@ class UserRepository(private val context: Context) {
 
     suspend fun pullCloudIfSignedIn() {
         val uid = auth?.currentUser?.uid ?: return
-        val snap = db?.collection("users")?.document(uid)?.get()?.await() ?: return
+        val firestore = db ?: return
+        // Timeout supaya login UI tidak “diam” jika Firestore belum aktif / rules belum di-deploy.
+        val snap = withTimeoutOrNull(8_000L) {
+            firestore.collection("users").document(uid).get().await()
+        } ?: return
         if (!snap.exists()) {
             val local = current()
             syncEconomyToCloud(local, create = true)
