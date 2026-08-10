@@ -13,3 +13,9 @@ build-errors.txt
 *.dex
 .cxx/
 app/src/src/
+node_modules/
+functions/node_modules/
+
+*.idsig
+WhatsApp Image*.jpeg
+WhatsApp Image*.jpg
