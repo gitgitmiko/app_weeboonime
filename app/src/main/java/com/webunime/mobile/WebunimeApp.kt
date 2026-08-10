@@ -59,7 +59,11 @@ class WebunimeApp : Application() {
 
         appScope.launch {
             userRepository.ensureBootstrapped()
-            runCatching { userRepository.pullCloudIfSignedIn() }
+            val uid = authRepository.currentUser?.uid
+            runCatching {
+                userRepository.bindToAccount(uid)
+                episodeUnlocks.bindToAccount(uid)
+            }
         }
 
         appScope.launch {

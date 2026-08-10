@@ -65,6 +65,7 @@ import com.webunime.mobile.ui.history.HistoryScreen
 import com.webunime.mobile.ui.home.HomeScreen
 import com.webunime.mobile.ui.player.MiniPlayerBar
 import com.webunime.mobile.ui.player.PlayerActivity
+import com.webunime.mobile.ui.premium.PremiumPackageScreen
 import com.webunime.mobile.ui.search.SearchScreen
 import com.webunime.mobile.ui.subscribed.SubscribedScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
@@ -135,13 +136,16 @@ class MainActivity : ComponentActivity() {
                                     Toast.LENGTH_SHORT,
                                 ).show()
                                 launch {
-                                    runCatching { app.userRepository.pullCloudIfSignedIn() }
-                                        .onFailure {
-                                            android.util.Log.w(
-                                                "WebunimeAuth",
-                                                "Sync cloud gagal (lokal tetap jalan): ${it.message}",
-                                            )
-                                        }
+                                    val uid = app.authRepository.currentUser?.uid
+                                    runCatching {
+                                        app.userRepository.bindToAccount(uid)
+                                        app.episodeUnlocks.bindToAccount(uid)
+                                    }.onFailure {
+                                        android.util.Log.w(
+                                            "WebunimeAuth",
+                                            "Sync cloud gagal (lokal tetap jalan): ${it.message}",
+                                        )
+                                    }
                                 }
                             }.onFailure {
                                 loginBusy = false
@@ -335,6 +339,7 @@ class MainActivity : ComponentActivity() {
                                             onOpenSearch = { nav.navigate("search") },
                                             onOpenSchedule = { nav.navigate("schedule") },
                                             onOpenAccount = { nav.navigate("account") },
+                                            onOpenPremium = { nav.navigate("premium") },
                                         )
                                     }
                                     composable("schedule") {
@@ -361,6 +366,12 @@ class MainActivity : ComponentActivity() {
                                                 app.nowPlaying.clear()
                                                 loggedIn = false
                                             },
+                                            onOpenPremium = { nav.navigate("premium") },
+                                        )
+                                    }
+                                    composable("premium") {
+                                        PremiumPackageScreen(
+                                            onBack = { nav.popBackStack() },
                                         )
                                     }
                                     composable("search") {
@@ -376,8 +387,8 @@ class MainActivity : ComponentActivity() {
                                         DetailScreen(
                                             slug = slug,
                                             onBack = { nav.popBackStack() },
-                                            onGoAccount = {
-                                                nav.navigate("account") {
+                                            onOpenPremium = {
+                                                nav.navigate("premium") {
                                                     launchSingleTop = true
                                                 }
                                             },

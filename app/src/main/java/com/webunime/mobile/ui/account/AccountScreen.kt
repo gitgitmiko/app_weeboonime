@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 fun AccountScreen(
     contentPadding: PaddingValues = PaddingValues(),
     onLogout: () -> Unit = {},
+    onOpenPremium: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as Activity
@@ -56,7 +57,9 @@ fun AccountScreen(
             busy = true
             val res = app.authRepository.handleGoogleSignInResult(result.data)
             res.onSuccess {
-                app.userRepository.pullCloudIfSignedIn()
+                val uid = app.authRepository.currentUser?.uid
+                app.userRepository.bindToAccount(uid)
+                app.episodeUnlocks.bindToAccount(uid)
                 message = "Login berhasil"
             }.onFailure {
                 message = it.message ?: "Login gagal"
@@ -107,6 +110,8 @@ fun AccountScreen(
                 onClick = {
                     scope.launch {
                         app.authRepository.signOut(activity)
+                        app.userRepository.bindToAccount(null)
+                        app.episodeUnlocks.bindToAccount(null)
                         app.session.logout()
                         app.nowPlaying.clear()
                         onLogout()
@@ -189,30 +194,16 @@ fun AccountScreen(
 
         Text("Premium", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Produk Play Billing: webunime_premium_1m / 3m / 6m / 12m",
+            "1x bayar, bukan langganan otomatis. Pilih paket di layar Premium.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        app.billingRepository.plans.forEach { plan ->
-            Button(
-                onClick = {
-                    val launched = app.billingRepository.launchPlan(activity, plan.productId)
-                    if (!launched) {
-                        if (BuildConfig.DEBUG) {
-                            scope.launch {
-                                app.userRepository.applyPremiumDays(plan.days, plan.bonusGems)
-                                message = "Debug: aktifkan ${plan.title} (+${plan.bonusGems} gem)"
-                            }
-                        } else {
-                            message = "Billing belum siap / produk belum di Play Console"
-                        }
-                    }
-                },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("${plan.title} · +${plan.bonusGems} gem")
-            }
+        Button(
+            onClick = onOpenPremium,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Lihat paket Premium")
         }
 
         message?.let {

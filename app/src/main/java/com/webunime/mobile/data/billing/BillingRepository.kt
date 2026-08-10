@@ -21,8 +21,12 @@ import kotlin.coroutines.resume
 data class PremiumPlan(
     val productId: String,
     val title: String,
+    val subtitle: String,
     val days: Int,
     val bonusGems: Int,
+    val priceLabel: String,
+    val savePercent: Int? = null,
+    val isBest: Boolean = false,
 )
 
 class BillingRepository(context: Context) : PurchasesUpdatedListener {
@@ -33,10 +37,42 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
     val purchases: SharedFlow<Purchase> = _purchases
 
     val plans = listOf(
-        PremiumPlan("webunime_premium_1m", "1 bulan", 30, 20),
-        PremiumPlan("webunime_premium_3m", "3 bulan", 90, 70),
-        PremiumPlan("webunime_premium_6m", "6 bulan", 180, 160),
-        PremiumPlan("webunime_premium_12m", "1 tahun", 365, 400),
+        PremiumPlan(
+            productId = "webunime_premium_1m",
+            title = "1 Bulan",
+            subtitle = "30 hari premium",
+            days = 30,
+            bonusGems = 3_000,
+            priceLabel = "Rp 12.000",
+        ),
+        PremiumPlan(
+            productId = "webunime_premium_3m",
+            title = "3 Bulan",
+            subtitle = "90 hari premium",
+            days = 90,
+            bonusGems = 9_000,
+            priceLabel = "Rp 30.000",
+            savePercent = 17,
+        ),
+        PremiumPlan(
+            productId = "webunime_premium_6m",
+            title = "6 Bulan",
+            subtitle = "180 hari premium",
+            days = 180,
+            bonusGems = 18_000,
+            priceLabel = "Rp 55.000",
+            savePercent = 24,
+            isBest = true,
+        ),
+        PremiumPlan(
+            productId = "webunime_premium_12m",
+            title = "12 Bulan",
+            subtitle = "360 hari premium",
+            days = 360,
+            bonusGems = 36_000,
+            priceLabel = "Rp 99.000",
+            savePercent = 31,
+        ),
     )
 
     private var billingClient: BillingClient = BillingClient.newBuilder(appContext)
@@ -71,7 +107,7 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
         val products = plans.map {
             QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(it.productId)
-                .setProductType(BillingClient.ProductType.SUBS)
+                .setProductType(BillingClient.ProductType.INAPP)
                 .build()
         }
         val params = QueryProductDetailsParams.newBuilder()
@@ -86,7 +122,7 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
 
     private fun queryOwned() {
         val params = QueryPurchasesParams.newBuilder()
-            .setProductType(BillingClient.ProductType.SUBS)
+            .setProductType(BillingClient.ProductType.INAPP)
             .build()
         billingClient.queryPurchasesAsync(params) { result, purchases ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -97,10 +133,9 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
 
     fun launchPlan(activity: Activity, productId: String): Boolean {
         val details = productDetails.firstOrNull { it.productId == productId } ?: return false
-        val offer = details.subscriptionOfferDetails?.firstOrNull() ?: return false
+        // One-time (INAPP) — sesuai “bukan berlangganan”
         val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
-            .setOfferToken(offer.offerToken)
             .build()
         val flow = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams))

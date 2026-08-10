@@ -75,6 +75,7 @@ fun DetailScreen(
     slug: String,
     onBack: () -> Unit,
     onGoAccount: () -> Unit = {},
+    onOpenPremium: () -> Unit = onGoAccount,
 ) {
     val context = LocalContext.current
     val activity = context as android.app.Activity
@@ -227,7 +228,7 @@ fun DetailScreen(
                                 onToggle = { synopsisExpanded = !synopsisExpanded },
                             )
                             Spacer(Modifier.height(14.dp))
-                            PremiumBanner(onClick = onGoAccount)
+                            PremiumBanner(onClick = onOpenPremium)
                             Spacer(Modifier.height(18.dp))
                             EpisodesHeader(
                                 count = data.episodes.size,
@@ -267,7 +268,7 @@ fun DetailScreen(
                 onBuyPremium = {
                     showKeysEmpty = false
                     pendingEpisode = null
-                    onGoAccount()
+                    onOpenPremium()
                 },
                 onWatchAd = {
                     scope.launch {

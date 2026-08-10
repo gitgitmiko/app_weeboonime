@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.HomeResponse
+import com.webunime.mobile.ui.components.HomePremiumPromo
 import com.webunime.mobile.ui.components.HomeUserHeader
 import com.webunime.mobile.ui.components.HorizontalWibukuPosterRow
 import com.webunime.mobile.ui.components.SectionHeader
@@ -53,6 +54,7 @@ fun HomeScreen(
     onOpenSearch: () -> Unit = {},
     onOpenSchedule: () -> Unit = {},
     onOpenAccount: () -> Unit = {},
+    onOpenPremium: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
@@ -123,6 +125,10 @@ fun HomeScreen(
                         sessionName = app.session.displayName,
                         onClick = onOpenAccount,
                     )
+                }
+
+                item {
+                    HomePremiumPromo(onOpenPremium = onOpenPremium)
                 }
 
                 item {

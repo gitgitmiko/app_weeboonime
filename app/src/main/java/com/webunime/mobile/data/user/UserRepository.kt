@@ -16,13 +16,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
 private val Context.userStore by preferencesDataStore("webunime_user_economy")
 
+/**
+ * Ekonomi (kunci/gem/XP/level) terikat ke Firebase UID.
+ * Ganti akun Google → load cloud akun itu (atau bootstrap baru), bukan data lokal akun lama.
+ */
 class UserRepository(private val context: Context) {
 
     private val auth: FirebaseAuth? = runCatching { FirebaseAuth.getInstance() }.getOrNull()
@@ -34,6 +38,7 @@ class UserRepository(private val context: Context) {
     private val kLevel = intPreferencesKey("level")
     private val kPremiumUntil = longPreferencesKey("premium_until")
     private val kBootstrapped = intPreferencesKey("bootstrapped")
+    private val kBoundUid = stringPreferencesKey("bound_uid")
 
     private val localFlow: Flow<UserProfile> = context.userStore.data.map { prefs ->
         val boot = prefs[kBootstrapped] ?: 0
@@ -73,11 +78,35 @@ class UserRepository(private val context: Context) {
     suspend fun ensureBootstrapped() {
         context.userStore.edit { prefs ->
             if ((prefs[kBootstrapped] ?: 0) == 0) {
-                prefs[kKeys] = BuildConfig.STARTING_KEYS
-                prefs[kGems] = 0
-                prefs[kXp] = 0
-                prefs[kLevel] = 1
-                prefs[kBootstrapped] = 1
+                writeFreshDefaults(prefs)
+            }
+        }
+    }
+
+    /**
+     * Panggil saat login / ganti akun / logout.
+     * - uid null → reset lokal (guest)
+     * - uid beda dari bound → reset lokal lalu load cloud akun baru (tanpa merge akun lama)
+     * - uid sama → sync cloud
+     */
+    suspend fun bindToAccount(uid: String?) {
+        val bound = context.userStore.data.first()[kBoundUid]
+        when {
+            uid.isNullOrBlank() -> {
+                context.userStore.edit { prefs ->
+                    writeFreshDefaults(prefs)
+                    prefs.remove(kBoundUid)
+                }
+            }
+            bound != uid -> {
+                context.userStore.edit { prefs ->
+                    writeFreshDefaults(prefs)
+                    prefs[kBoundUid] = uid
+                }
+                loadCloudForCurrentUser(overwriteLocal = true)
+            }
+            else -> {
+                loadCloudForCurrentUser(overwriteLocal = false)
             }
         }
     }
@@ -96,7 +125,6 @@ class UserRepository(private val context: Context) {
         val after = before.copy(keys = before.keys - 1)
         persistLocal(after)
         syncEconomyToCloud(after)
-        // catat episode unlock singkat (opsional cloud)
         val uid = auth?.currentUser?.uid
         val firestore = db
         if (uid != null && firestore != null) {
@@ -165,16 +193,21 @@ class UserRepository(private val context: Context) {
         return after
     }
 
+    /** @deprecated gunakan [bindToAccount] */
     suspend fun pullCloudIfSignedIn() {
         val uid = auth?.currentUser?.uid ?: return
+        bindToAccount(uid)
+    }
+
+    private suspend fun loadCloudForCurrentUser(overwriteLocal: Boolean) {
+        val uid = auth?.currentUser?.uid ?: return
         val firestore = db ?: return
-        // Timeout supaya login UI tidak “diam” jika Firestore belum aktif / rules belum di-deploy.
         val snap = withTimeoutOrNull(8_000L) {
             firestore.collection("users").document(uid).get().await()
-        } ?: return
+        } ?: return // offline / timeout: jangan push defaults (bisa timpa cloud)
         if (!snap.exists()) {
-            val local = current()
-            syncEconomyToCloud(local, create = true)
+            // Akun Google baru → mulai dari defaults (sudah di-reset), push ke cloud
+            syncEconomyToCloud(current(), create = true)
             return
         }
         val cloud = UserProfile(
@@ -182,25 +215,29 @@ class UserRepository(private val context: Context) {
             displayName = auth?.currentUser?.displayName,
             email = auth?.currentUser?.email,
             photoUrl = auth?.currentUser?.photoUrl?.toString(),
-            keys = (snap.getLong("keys") ?: 0L).toInt(),
+            keys = (snap.getLong("keys") ?: BuildConfig.STARTING_KEYS.toLong()).toInt(),
             gems = (snap.getLong("gems") ?: 0L).toInt(),
             xp = (snap.getLong("xp") ?: 0L).toInt(),
             level = (snap.getLong("level") ?: 1L).toInt().coerceAtLeast(1),
             isPremium = snap.getBoolean("isPremium") == true,
             premiumUntilMs = snap.getLong("premiumUntilMs") ?: 0L,
         )
-        // Ambil max keys/gems supaya tidak rugi data lokal sebelum sync pertama
-        val local = current()
-        val merged = cloud.copy(
-            keys = maxOf(cloud.keys, local.keys),
-            gems = maxOf(cloud.gems, local.gems),
-            xp = maxOf(cloud.xp, local.xp),
-            level = maxOf(cloud.level, local.level),
-            premiumUntilMs = maxOf(cloud.premiumUntilMs, local.premiumUntilMs),
-            isPremium = maxOf(cloud.premiumUntilMs, local.premiumUntilMs) > System.currentTimeMillis(),
-        )
-        persistLocal(merged)
-        syncEconomyToCloud(merged)
+        if (overwriteLocal) {
+            // Ganti akun: cloud akun ini saja, jangan max dengan lokal akun lama
+            persistLocal(cloud)
+        } else {
+            // Sama akun: cloud menang untuk konsistensi multi-device
+            persistLocal(cloud)
+        }
+    }
+
+    private fun writeFreshDefaults(prefs: androidx.datastore.preferences.core.MutablePreferences) {
+        prefs[kKeys] = BuildConfig.STARTING_KEYS
+        prefs[kGems] = 0
+        prefs[kXp] = 0
+        prefs[kLevel] = 1
+        prefs[kPremiumUntil] = 0L
+        prefs[kBootstrapped] = 1
     }
 
     private suspend fun persistLocal(profile: UserProfile) {
@@ -211,6 +248,7 @@ class UserRepository(private val context: Context) {
             prefs[kLevel] = profile.level
             prefs[kPremiumUntil] = profile.premiumUntilMs
             prefs[kBootstrapped] = 1
+            auth?.currentUser?.uid?.let { prefs[kBoundUid] = it }
         }
     }
 

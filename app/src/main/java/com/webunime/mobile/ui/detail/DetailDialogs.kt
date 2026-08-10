@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -284,35 +283,25 @@ fun PremiumBanner(onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(Color(0xFF1A237E), Color(0xFF0D47A1), Color(0xFF1565C0)),
-                ),
-            )
+            .background(WuColors.Surface)
             .clickable(onClick = onClick)
-            .padding(10.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFF2962FF))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_crown),
-                contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(16.dp),
-            )
-            Text("Premium", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        }
+        com.webunime.mobile.ui.components.ShimmerPremiumButton(onClick = onClick)
         Column(Modifier.weight(1f)) {
-            Text("Harga Mulai Dari Rp. 12.000", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text("No iklan nonton sepuasnya", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
+            Text(
+                "Harga Mulai Dari Rp. 12.000",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "No iklan nonton sepuasnya",
+                color = WuColors.Muted,
+                fontSize = 11.sp,
+            )
         }
     }
 }
