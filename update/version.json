@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 18,
-  "versionName": "0.2.7",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.7/Weeboonime-v0.2.7.apk",
-  "changelog": "Player ala Wibuku + mini-player sticky setelah kembali dari nonton."
+  "versionCode": 19,
+  "versionName": "0.2.8",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.8/Weeboonime-v0.2.8.apk",
+  "changelog": "Onboarding wajib login: Welcome → Disclaimer → Login Google + Privacy/Terms. Logout kembali ke auth."
 }

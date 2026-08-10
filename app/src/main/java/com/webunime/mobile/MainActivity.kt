@@ -56,10 +56,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.webunime.mobile.ui.account.AccountScreen
+import com.webunime.mobile.ui.auth.AuthOnboardingFlow
 import com.webunime.mobile.ui.auth.LegalDoc
 import com.webunime.mobile.ui.auth.LegalScreen
-import com.webunime.mobile.ui.auth.LoginScreen
-import com.webunime.mobile.ui.auth.WelcomeScreen
 import com.webunime.mobile.ui.calendar.CalendarScreen
 import com.webunime.mobile.ui.detail.DetailScreen
 import com.webunime.mobile.ui.history.HistoryScreen
@@ -198,22 +197,13 @@ class MainActivity : ComponentActivity() {
                             val authNav = rememberNavController()
                             NavHost(
                                 navController = authNav,
-                                startDestination = "welcome",
+                                startDestination = "onboarding",
                                 modifier = Modifier.fillMaxSize(),
                             ) {
-                                composable("welcome") {
-                                    WelcomeScreen(
-                                        onContinue = {
-                                            authNav.navigate("login") {
-                                                popUpTo("welcome") { inclusive = true }
-                                            }
-                                        },
-                                    )
-                                }
-                                composable("login") {
-                                    LoginScreen(
+                                composable("onboarding") {
+                                    AuthOnboardingFlow(
                                         onGoogleLogin = {
-                                            if (loginBusy) return@LoginScreen
+                                            if (loginBusy) return@AuthOnboardingFlow
                                             scope.launch {
                                                 loginBusy = true
                                                 app.authRepository.prepareSignIn(activity)
@@ -366,7 +356,12 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                     composable("account") {
-                                        AccountScreen()
+                                        AccountScreen(
+                                            onLogout = {
+                                                app.nowPlaying.clear()
+                                                loggedIn = false
+                                            },
+                                        )
                                     }
                                     composable("search") {
                                         SearchScreen(

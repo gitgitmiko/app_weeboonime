@@ -35,7 +35,10 @@ import com.webunime.mobile.WebunimeApp
 import kotlinx.coroutines.launch
 
 @Composable
-fun AccountScreen(contentPadding: PaddingValues = PaddingValues()) {
+fun AccountScreen(
+    contentPadding: PaddingValues = PaddingValues(),
+    onLogout: () -> Unit = {},
+) {
     val context = LocalContext.current
     val activity = context as Activity
     val app = context.applicationContext as WebunimeApp
@@ -99,7 +102,42 @@ fun AccountScreen(contentPadding: PaddingValues = PaddingValues()) {
             }
         }
 
-        if (p?.uid == null) {
+        if (p?.uid != null) {
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        app.authRepository.signOut(activity)
+                        app.session.logout()
+                        app.nowPlaying.clear()
+                        onLogout()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Logout") }
+        } else if (app.session.isLoggedIn) {
+            // Tester / sesi lokal tanpa Firebase
+            OutlinedButton(
+                onClick = {
+                    app.session.logout()
+                    app.nowPlaying.clear()
+                    onLogout()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Logout") }
+            Button(
+                onClick = {
+                    val intent = app.authRepository.signInIntent(activity)
+                    if (intent == null) {
+                        message = "Set GOOGLE_WEB_CLIENT_ID + google-services.json dulu"
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    } else {
+                        signInLauncher.launch(intent)
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Hubungkan Google") }
+        } else {
             Button(
                 onClick = {
                     val intent = app.authRepository.signInIntent(activity)
@@ -113,16 +151,6 @@ fun AccountScreen(contentPadding: PaddingValues = PaddingValues()) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Login dengan Google") }
-        } else {
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        app.authRepository.signOut(activity)
-                        message = "Logout"
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Logout") }
         }
 
         Text("Dapat kunci", style = MaterialTheme.typography.titleMedium)

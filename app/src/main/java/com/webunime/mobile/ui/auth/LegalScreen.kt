@@ -1,5 +1,6 @@
 package com.webunime.mobile.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -32,9 +33,17 @@ fun LegalScreen(
     doc: LegalDoc,
     onBack: () -> Unit,
 ) {
+    val barTitle = when (doc) {
+        LegalDoc.Privacy -> "Weeboonime - Privacy Policy"
+        LegalDoc.Terms -> "Weeboonime - Terms of Service"
+    }
     val title = when (doc) {
         LegalDoc.Privacy -> "Privacy Policy"
         LegalDoc.Terms -> "Terms of Service"
+    }
+    val updated = when (doc) {
+        LegalDoc.Privacy -> "Updated at 10-08-2026"
+        LegalDoc.Terms -> "Updated at 10-08-2026"
     }
     val body = when (doc) {
         LegalDoc.Privacy -> privacyPolicyBody
@@ -42,11 +51,11 @@ fun LegalScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFF151719),
+        containerColor = Color.White,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(barTitle, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -58,7 +67,7 @@ fun LegalScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF151719),
+                    containerColor = Color.Black,
                     titleContentColor = Color.White,
                 ),
             )
@@ -67,19 +76,26 @@ fun LegalScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "Terakhir diperbarui: 10 Agustus 2026",
-                color = Color(0xFFA0A0A1),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp),
+                text = title,
+                color = Color.Black,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = updated,
+                color = Color.Black,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
             )
             Text(
                 text = body,
-                color = Color.White,
+                color = Color.Black,
                 fontSize = 14.sp,
                 lineHeight = 22.sp,
             )
@@ -88,71 +104,59 @@ fun LegalScreen(
 }
 
 private val privacyPolicyBody = """
-1. Pendahuluan
-Weeboonime ("kami") menghormati privasi pengguna. Kebijakan ini menjelaskan data apa yang kami kumpulkan, bagaimana kami menggunakannya, dan pilihan yang kamu miliki.
+Weeboonime menghormati privasi pengguna. Kebijakan ini menjelaskan data yang kami kumpulkan dan cara penggunaannya.
 
-2. Data yang Dikumpulkan
-• Informasi akun (jika login), seperti nama tampilan dan email.
-• Data penggunaan aplikasi: riwayat menonton, preferensi, perangkat, dan log error.
-• Data teknis: jenis perangkat, versi OS, dan identitas instalasi untuk update aplikasi.
+Definitions and key terms
+• Cookie: File kecil yang dapat disimpan di perangkat untuk preferensi dan analitik ringan.
+• Company: Merujuk pada pengelola proyek Weeboonime.
+• Device: Ponsel/tablet yang menjalankan aplikasi.
+• Personal Data: Informasi yang dapat mengidentifikasi kamu (mis. email Google saat login).
 
-3. Penggunaan Data
-Data digunakan untuk:
-• menyediakan dan memperbaiki layanan streaming katalog anime;
-• menyimpan riwayat menonton dan preferensi lokal;
-• mengirim pembaruan aplikasi (OTA);
-• mencegah penyalahgunaan dan menganalisis kinerja aplikasi.
+Data yang dikumpulkan
+• Informasi akun Google (nama, email, foto profil) jika kamu login.
+• Data penggunaan: riwayat menonton, kunci/gem/XP lokal, preferensi.
+• Data teknis: jenis perangkat, versi OS, log error, identitas instalasi untuk OTA.
 
-4. Penyimpanan & Keamanan
-Sebagian data disimpan di perangkat (mis. riwayat menonton). Data yang dikirim ke server katalog diproses sebatas yang diperlukan untuk layanan. Kami menerapkan langkah wajar untuk melindungi data, namun tidak ada metode transmisi yang 100% aman.
+Penggunaan data
+Data dipakai untuk menyediakan layanan katalog/streaming, menyimpan progres ekonomi akun, sinkronisasi cloud (Firestore), update aplikasi, dan mencegah penyalahgunaan.
 
-5. Berbagi ke Pihak Ketiga
-Kami tidak menjual data pribadi. Data dapat diproses oleh penyedia infrastruktur (hosting API, distribusi update) hanya untuk menjalankan layanan.
+Penyimpanan & keamanan
+Sebagian data disimpan di perangkat. Data cloud diproses sebatas kebutuhan layanan. Kami menerapkan langkah wajar, namun tidak ada transmisi yang 100% aman.
 
-6. Hak Pengguna
-Kamu dapat meminta akses, koreksi, atau penghapusan data akun dengan menghubungi pengelola aplikasi. Kamu juga dapat menghapus data lokal dengan menghapus data aplikasi / uninstall.
+Berbagi pihak ketiga
+Kami tidak menjual data pribadi. Penyedia infrastruktur (Firebase, hosting API, distribusi APK) dapat memproses data hanya untuk menjalankan layanan.
 
-7. Anak di Bawah Umur
-Layanan tidak ditujukan untuk anak di bawah usia yang diizinkan hukum setempat tanpa pengawasan orang tua/wali.
+Hak pengguna
+Kamu dapat meminta akses, koreksi, atau penghapusan data akun. Data lokal dapat dihapus lewat clear data / uninstall.
 
-8. Perubahan Kebijakan
-Kami dapat memperbarui kebijakan ini. Perubahan material akan ditandai dengan tanggal pembaruan di halaman ini.
+Perubahan kebijakan
+Kami dapat memperbarui kebijakan ini. Tanggal pembaruan tercantum di atas.
 
-9. Kontak
-Untuk pertanyaan privasi, hubungi pengelola Weeboonime melalui kanal resmi proyek.
+Kontak
+admin@weeboonime.app
 """.trimIndent()
 
 private val termsOfServiceBody = """
-1. Penerimaan Syarat
-Dengan mengunduh, menginstal, atau menggunakan Weeboonime, kamu menyetujui Terms of Service ini. Jika tidak setuju, hentikan penggunaan aplikasi.
+General Terms
+Dengan mengunduh atau menggunakan Weeboonime, kamu menyetujui Terms of Service ini. Jika tidak setuju, hentikan penggunaan aplikasi.
 
-2. Deskripsi Layanan
-Weeboonime adalah klien mobile untuk menelusuri katalog anime dan memutar episode berdasarkan sumber data yang tersedia. Fitur sosial (Subscribe, Timeline) dapat bersifat pratinjau/dummy.
+Weeboonime adalah klien mobile untuk menelusuri katalog anime dan memutar episode berdasarkan sumber data yang tersedia. Tim Weeboonime tidak bertanggung jawab atas kerusakan perangkat, kehilangan data, atau gangguan layanan sejauh diizinkan hukum.
 
-3. Akun & Login
-Login (termasuk Google atau Tester Login) digunakan untuk mengidentifikasi sesi. Kamu bertanggung jawab menjaga keamanan perangkat dan akunmu. Satu akun dapat dibatasi pada sejumlah perangkat tertentu.
+Akun & Login
+Login Google (atau Tester Login untuk pengujian) mengidentifikasi sesi. Kamu bertanggung jawab menjaga keamanan perangkat dan akun.
 
-4. Penggunaan yang Diizinkan
-Kamu setuju untuk:
-• menggunakan aplikasi hanya untuk keperluan pribadi yang sah;
-• tidak menyalahgunakan, merusak, atau mencoba mengakses sistem secara tidak sah;
-• tidak mendistribusikan ulang konten dilindungi hak cipta di luar ketentuan yang berlaku.
+Penggunaan
+Gunakan aplikasi untuk keperluan pribadi yang sah. Dilarang menyalahgunakan, merusak sistem, atau mendistribusikan ulang konten dilindungi hak cipta di luar ketentuan yang berlaku.
 
-5. Konten & Sumber
-Katalog dan tautan pemutar dapat berasal dari sumber pihak ketiga. Kami tidak menjamin ketersediaan, kelengkapan, atau legalitas setiap sumber di semua yurisdiksi. Pengguna bertanggung jawab mematuhi hukum setempat.
+Konten & sumber
+Katalog dan tautan pemutar dapat berasal dari sumber pihak ketiga. Kami tidak menjamin ketersediaan atau legalitas di setiap yurisdiksi. Pengguna wajib mematuhi hukum setempat.
 
-6. Pembaruan Aplikasi
-Aplikasi dapat memeriksa dan menawarkan pembaruan (OTA). Memasang update berarti menerima versi terbaru beserta syarat yang berlaku.
+Premium, kunci, dan iklan
+Fitur ekonomi (kunci, gem, Premium, iklan) dapat berubah. Harga berlangganan mengikuti ketentuan Play Store bila tersedia.
 
-7. Penafian
-Layanan disediakan "sebagaimana adanya". Sepanjang diizinkan hukum, kami tidak bertanggung jawab atas kerugian tidak langsung, kehilangan data, atau gangguan layanan.
+Pembaruan
+Aplikasi dapat menawarkan update OTA. Memasang update berarti menerima versi terbaru beserta syarat yang berlaku.
 
-8. Penghentian
-Kami dapat menangguhkan atau menghentikan akses jika terjadi pelanggaran syarat, penyalahgunaan, atau alasan keamanan.
-
-9. Perubahan Syarat
-Syarat dapat diperbarui dari waktu ke waktu. Penggunaan berkelanjutan setelah pembaruan dianggap sebagai persetujuan.
-
-10. Hukum yang Berlaku
-Syarat ini ditafsirkan sesuai hukum yang berlaku di yurisdiksi pengelola proyek, tanpa mengesampingkan hak konsumen yang wajib.
+Perubahan syarat
+Kami berhak mengubah harga dan kebijakan penggunaan sewaktu-waktu. Penggunaan berkelanjutan setelah pembaruan dianggap sebagai persetujuan.
 """.trimIndent()
