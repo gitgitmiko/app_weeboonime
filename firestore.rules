@@ -8,5 +8,10 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    // Hanya Admin SDK (Cloud Functions) — client tidak boleh baca/tulis
+    match /meta/{docId} {
+      allow read, write: if false;
+    }
   }
 }

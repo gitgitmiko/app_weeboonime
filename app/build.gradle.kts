@@ -13,8 +13,8 @@ android {
         applicationId = "com.webunime.mobile"
         minSdk = 24
         targetSdk = 35
-        versionCode = 20
-        versionName = "0.2.9"
+        versionCode = 21
+        versionName = "0.3.0"
 
         buildConfigField(
             "String",
@@ -107,6 +107,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.android.billingclient:billing-ktx:7.1.1")

@@ -7,6 +7,8 @@ import com.webunime.mobile.data.WatchHistoryStore
 import com.webunime.mobile.data.ads.RewardedAdManager
 import com.webunime.mobile.data.auth.AuthRepository
 import com.webunime.mobile.data.billing.BillingRepository
+import com.webunime.mobile.data.fcm.EpisodeNotify
+import com.webunime.mobile.data.fcm.FcmTopicManager
 import com.webunime.mobile.data.player.NowPlayingController
 import com.webunime.mobile.data.user.EpisodeUnlockStore
 import com.webunime.mobile.data.user.UserRepository
@@ -51,8 +53,8 @@ class WebunimeApp : Application() {
 
         rewardedAds.init()
         billingRepository.start()
+        EpisodeNotify.ensureChannel(this)
 
-        // Sinkronkan session lokal dengan Firebase Auth bila sudah login cloud.
         authRepository.currentUser?.let { user ->
             session.loginAs(user.displayName ?: user.email ?: "Google User")
         }
@@ -63,6 +65,10 @@ class WebunimeApp : Application() {
             runCatching {
                 userRepository.bindToAccount(uid)
                 episodeUnlocks.bindToAccount(uid)
+                if (uid != null) {
+                    val subs = userRepository.current().animeSubs
+                    FcmTopicManager.syncTopics(subs, emptyList())
+                }
             }
         }
 
@@ -79,5 +85,9 @@ class WebunimeApp : Application() {
                 }
             }
         }
+    }
+
+    fun launchIo(block: suspend () -> Unit) {
+        appScope.launch(Dispatchers.IO) { block() }
     }
 }

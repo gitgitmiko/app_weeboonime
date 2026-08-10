@@ -88,11 +88,11 @@ fun DetailScreen(
     var pendingEpisode by remember { mutableStateOf<Int?>(null) }
     var synopsisExpanded by remember { mutableStateOf(false) }
     var sortDesc by remember { mutableStateOf(true) }
-    var subscribed by remember { mutableStateOf(false) }
     var xpPopup by remember { mutableStateOf<XpGainInfo?>(null) }
     val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
     val unlocks by app.episodeUnlocks.unlocksFlow.collectAsStateWithLifecycle(initialValue = emptySet())
     val isPremium = profile?.effectivePremium() == true
+    val subscribed = profile?.animeSubs?.contains(slug) == true
 
     fun openPlayer(n: Int, title: String, thumbnail: String) {
         app.nowPlaying.clear()
@@ -212,13 +212,19 @@ fun DetailScreen(
                                     tryWatch(n, data.displayTitle(), data.thumbnail.orEmpty())
                                 },
                                 onSubscribe = {
-                                    subscribed = !subscribed
-                                    Toast.makeText(
-                                        context,
-                                        if (subscribed) "Subscribe aktif (FCM menyusul di Fase 2)"
-                                        else "Unsubscribe",
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    scope.launch {
+                                        val nowOn = app.userRepository.toggleSubscribe(slug)
+                                        if (nowOn) {
+                                            com.webunime.mobile.data.fcm.FcmTopicManager.subscribeSlug(slug)
+                                        } else {
+                                            com.webunime.mobile.data.fcm.FcmTopicManager.unsubscribeSlug(slug)
+                                        }
+                                        Toast.makeText(
+                                            context,
+                                            if (nowOn) "Subscribe aktif — notifikasi episode baru" else "Unsubscribe",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
                                 },
                             )
                             Spacer(Modifier.height(18.dp))

@@ -60,6 +60,8 @@ fun AccountScreen(
                 val uid = app.authRepository.currentUser?.uid
                 app.userRepository.bindToAccount(uid)
                 app.episodeUnlocks.bindToAccount(uid)
+                val subs = app.userRepository.current().animeSubs
+                com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(subs, emptyList())
                 message = "Login berhasil"
             }.onFailure {
                 message = it.message ?: "Login gagal"
@@ -109,6 +111,8 @@ fun AccountScreen(
             OutlinedButton(
                 onClick = {
                     scope.launch {
+                        val subs = app.userRepository.current().animeSubs
+                        com.webunime.mobile.data.fcm.FcmTopicManager.clearAll(subs)
                         app.authRepository.signOut(activity)
                         app.userRepository.bindToAccount(null)
                         app.episodeUnlocks.bindToAccount(null)

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -24,8 +25,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 private val Context.userStore by preferencesDataStore("webunime_user_economy")
 
 /**
- * Ekonomi (kunci/gem/XP/level) terikat ke Firebase UID.
- * Ganti akun Google → load cloud akun itu (atau bootstrap baru), bukan data lokal akun lama.
+ * Ekonomi + subscribe anime terikat ke Firebase UID.
  */
 class UserRepository(private val context: Context) {
 
@@ -39,6 +39,7 @@ class UserRepository(private val context: Context) {
     private val kPremiumUntil = longPreferencesKey("premium_until")
     private val kBootstrapped = intPreferencesKey("bootstrapped")
     private val kBoundUid = stringPreferencesKey("bound_uid")
+    private val kAnimeSubs = stringSetPreferencesKey("anime_subs")
 
     private val localFlow: Flow<UserProfile> = context.userStore.data.map { prefs ->
         val boot = prefs[kBootstrapped] ?: 0
@@ -50,6 +51,7 @@ class UserRepository(private val context: Context) {
             level = (prefs[kLevel] ?: 1).coerceAtLeast(1),
             isPremium = (prefs[kPremiumUntil] ?: 0L) > System.currentTimeMillis(),
             premiumUntilMs = prefs[kPremiumUntil] ?: 0L,
+            animeSubs = (prefs[kAnimeSubs] ?: emptySet()).toList().sorted(),
         )
     }
 
@@ -61,6 +63,10 @@ class UserRepository(private val context: Context) {
             photoUrl = authUser?.photoUrl?.toString(),
         )
     }.distinctUntilChanged()
+
+    val animeSubsFlow: Flow<List<String>> = localFlow
+        .map { it.animeSubs }
+        .distinctUntilChanged()
 
     private fun authStateFlow(): Flow<com.google.firebase.auth.FirebaseUser?> = callbackFlow {
         val a = auth
@@ -86,7 +92,7 @@ class UserRepository(private val context: Context) {
     /**
      * Panggil saat login / ganti akun / logout.
      * - uid null → reset lokal (guest)
-     * - uid beda dari bound → reset lokal lalu load cloud akun baru (tanpa merge akun lama)
+     * - uid beda dari bound → reset lokal lalu load cloud akun baru
      * - uid sama → sync cloud
      */
     suspend fun bindToAccount(uid: String?) {
@@ -112,6 +118,43 @@ class UserRepository(private val context: Context) {
     }
 
     suspend fun current(): UserProfile = profileFlow.first()
+
+    fun isSubscribed(slug: String, profile: UserProfile? = null): Boolean {
+        val s = slug.trim()
+        if (s.isEmpty()) return false
+        return (profile?.animeSubs ?: emptyList()).contains(s)
+    }
+
+    /** @return true jika sekarang subscribed */
+    suspend fun toggleSubscribe(slug: String): Boolean {
+        val s = slug.trim()
+        require(s.isNotEmpty()) { "slug kosong" }
+        val before = current()
+        val set = before.animeSubs.toMutableSet()
+        val nowOn = if (set.contains(s)) {
+            set.remove(s)
+            false
+        } else {
+            set.add(s)
+            true
+        }
+        val after = before.copy(animeSubs = set.toList().sorted())
+        persistLocal(after)
+        syncEconomyToCloud(after)
+        return nowOn
+    }
+
+    suspend fun setSubscribed(slug: String, subscribed: Boolean): Boolean {
+        val s = slug.trim()
+        if (s.isEmpty()) return false
+        val before = current()
+        val set = before.animeSubs.toMutableSet()
+        if (subscribed) set.add(s) else set.remove(s)
+        val after = before.copy(animeSubs = set.toList().sorted())
+        persistLocal(after)
+        syncEconomyToCloud(after)
+        return subscribed
+    }
 
     suspend fun consumeKeyForEpisode(slug: String, episode: Int): Result<UserProfile> {
         val now = System.currentTimeMillis()
@@ -204,12 +247,19 @@ class UserRepository(private val context: Context) {
         val firestore = db ?: return
         val snap = withTimeoutOrNull(8_000L) {
             firestore.collection("users").document(uid).get().await()
-        } ?: return // offline / timeout: jangan push defaults (bisa timpa cloud)
+        } ?: return
         if (!snap.exists()) {
-            // Akun Google baru → mulai dari defaults (sudah di-reset), push ke cloud
             syncEconomyToCloud(current(), create = true)
             return
         }
+        @Suppress("UNCHECKED_CAST")
+        val subs = (snap.get("animeSubs") as? List<*>)
+            ?.mapNotNull { it as? String }
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.distinct()
+            ?.sorted()
+            ?: emptyList()
         val cloud = UserProfile(
             uid = uid,
             displayName = auth?.currentUser?.displayName,
@@ -221,14 +271,12 @@ class UserRepository(private val context: Context) {
             level = (snap.getLong("level") ?: 1L).toInt().coerceAtLeast(1),
             isPremium = snap.getBoolean("isPremium") == true,
             premiumUntilMs = snap.getLong("premiumUntilMs") ?: 0L,
+            animeSubs = subs,
         )
-        if (overwriteLocal) {
-            // Ganti akun: cloud akun ini saja, jangan max dengan lokal akun lama
-            persistLocal(cloud)
-        } else {
-            // Sama akun: cloud menang untuk konsistensi multi-device
-            persistLocal(cloud)
-        }
+        persistLocal(cloud)
+        // overwriteLocal flag kept for API clarity; cloud is source of truth either way
+        @Suppress("UNUSED_EXPRESSION")
+        overwriteLocal
     }
 
     private fun writeFreshDefaults(prefs: androidx.datastore.preferences.core.MutablePreferences) {
@@ -237,6 +285,7 @@ class UserRepository(private val context: Context) {
         prefs[kXp] = 0
         prefs[kLevel] = 1
         prefs[kPremiumUntil] = 0L
+        prefs[kAnimeSubs] = emptySet()
         prefs[kBootstrapped] = 1
     }
 
@@ -247,6 +296,7 @@ class UserRepository(private val context: Context) {
             prefs[kXp] = profile.xp
             prefs[kLevel] = profile.level
             prefs[kPremiumUntil] = profile.premiumUntilMs
+            prefs[kAnimeSubs] = profile.animeSubs.toSet()
             prefs[kBootstrapped] = 1
             auth?.currentUser?.uid?.let { prefs[kBoundUid] = it }
         }
@@ -262,6 +312,7 @@ class UserRepository(private val context: Context) {
             "level" to profile.level,
             "isPremium" to profile.effectivePremium(),
             "premiumUntilMs" to profile.premiumUntilMs,
+            "animeSubs" to profile.animeSubs,
             "email" to (auth?.currentUser?.email ?: ""),
             "displayName" to (auth?.currentUser?.displayName ?: ""),
             "updatedAt" to FieldValue.serverTimestamp(),

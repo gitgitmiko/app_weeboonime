@@ -48,6 +48,12 @@ data class AnimeCard(
 }
 
 @JsonClass(generateAdapter = false)
+data class LatestFeedResponse(
+    val updatedAt: String? = null,
+    val items: List<LatestItem> = emptyList(),
+)
+
+@JsonClass(generateAdapter = false)
 data class SearchResponse(
     val q: String? = null,
     val count: Int? = null,

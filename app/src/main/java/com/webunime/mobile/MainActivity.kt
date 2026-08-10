@@ -1,9 +1,17 @@
 ﻿package com.webunime.mobile
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,8 +35,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,10 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import android.content.Intent
-import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.webunime.mobile.ui.theme.WuColors
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -55,6 +59,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.webunime.mobile.data.fcm.EpisodeNotify
 import com.webunime.mobile.ui.account.AccountScreen
 import com.webunime.mobile.ui.auth.AuthOnboardingFlow
 import com.webunime.mobile.ui.auth.LegalDoc
@@ -69,6 +74,7 @@ import com.webunime.mobile.ui.premium.PremiumPackageScreen
 import com.webunime.mobile.ui.search.SearchScreen
 import com.webunime.mobile.ui.subscribed.SubscribedScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
+import com.webunime.mobile.ui.theme.WuColors
 import com.webunime.mobile.ui.timeline.TimelineScreen
 import com.webunime.mobile.ui.update.AppUpdateHost
 import kotlinx.coroutines.delay
@@ -106,6 +112,34 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var loginBusy by remember { mutableStateOf(false) }
+                var pendingOpenSlug by remember {
+                    mutableStateOf(intent.getStringExtra(EpisodeNotify.EXTRA_OPEN_SLUG))
+                }
+
+                DisposableEffect(Unit) {
+                    val listener = androidx.core.util.Consumer<Intent> { newIntent ->
+                        pendingOpenSlug = newIntent.getStringExtra(EpisodeNotify.EXTRA_OPEN_SLUG)
+                    }
+                    addOnNewIntentListener(listener)
+                    onDispose { removeOnNewIntentListener(listener) }
+                }
+
+                val notifyPermissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission(),
+                ) { /* ignore; user can enable later in settings */ }
+
+                LaunchedEffect(loggedIn) {
+                    if (!loggedIn) return@LaunchedEffect
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            activity,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                }
 
                 val googleSignInLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult(),
@@ -140,6 +174,11 @@ class MainActivity : ComponentActivity() {
                                     runCatching {
                                         app.userRepository.bindToAccount(uid)
                                         app.episodeUnlocks.bindToAccount(uid)
+                                        val subs = app.userRepository.current().animeSubs
+                                        com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(
+                                            subs,
+                                            emptyList(),
+                                        )
                                     }.onFailure {
                                         android.util.Log.w(
                                             "WebunimeAuth",
@@ -254,6 +293,15 @@ class MainActivity : ComponentActivity() {
                             val showBottom = route in bottomTabs.map { it.route }
                             val nowPlaying by app.nowPlaying.current.collectAsStateWithLifecycle()
 
+                            LaunchedEffect(pendingOpenSlug, loggedIn) {
+                                val slug = pendingOpenSlug?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+                                if (!loggedIn) return@LaunchedEffect
+                                nav.navigate("detail/$slug") {
+                                    launchSingleTop = true
+                                }
+                                pendingOpenSlug = null
+                            }
+
                             Scaffold(
                                 containerColor = WuColors.Bg,
                                 bottomBar = {
@@ -353,7 +401,9 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                     composable("subscribed") {
-                                        SubscribedScreen()
+                                        SubscribedScreen(
+                                            onOpenAnime = { slug -> nav.navigate("detail/$slug") },
+                                        )
                                     }
                                     composable("timeline") {
                                         TimelineScreen(

@@ -26,6 +26,7 @@ class CatalogApi(baseUrl: String) {
     private val calendarAdapter = moshi.adapter(CalendarResponse::class.java)
     private val detailAdapter = moshi.adapter(AnimeDetail::class.java)
     private val episodeAdapter = moshi.adapter(EpisodePlayback::class.java)
+    private val latestAdapter = moshi.adapter(LatestFeedResponse::class.java)
 
     suspend fun home(genre: String? = null): HomeResponse {
         val q = if (!genre.isNullOrBlank()) {
@@ -38,6 +39,8 @@ class CatalogApi(baseUrl: String) {
         get("/v1/search?q=${java.net.URLEncoder.encode(q, Charsets.UTF_8.name())}&limit=$limit", searchAdapter)
 
     suspend fun calendar(): CalendarResponse = get("/v1/calendar", calendarAdapter)
+
+    suspend fun latest(): LatestFeedResponse = get("/v1/anime/latest", latestAdapter)
 
     suspend fun anime(slug: String): AnimeDetail =
         get("/v1/anime/${enc(slug)}", detailAdapter)
