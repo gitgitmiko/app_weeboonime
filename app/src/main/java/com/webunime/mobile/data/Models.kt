@@ -87,6 +87,8 @@ data class ScheduleItem(
     val genre: List<String>? = null,
     val time: String? = null,
     val source: String? = null,
+    val latest_episode: Int? = null,
+    val latest_released_at: String? = null,
 ) {
     fun displayTitle(): String = judul ?: nama ?: slug ?: "Tanpa judul"
 }

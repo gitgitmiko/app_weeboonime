@@ -388,6 +388,30 @@ class MainActivity : ComponentActivity() {
                                             onOpenSchedule = { nav.navigate("schedule") },
                                             onOpenAccount = { nav.navigate("account") },
                                             onOpenPremium = { nav.navigate("premium") },
+                                            onOpenHistory = {
+                                                nav.navigate("history") {
+                                                    popUpTo(nav.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            },
+                                            onContinueWatch = { item ->
+                                                val i = Intent(activity, PlayerActivity::class.java).apply {
+                                                    putExtra(PlayerActivity.EXTRA_SLUG, item.slug)
+                                                    putExtra(
+                                                        PlayerActivity.EXTRA_EPISODE,
+                                                        item.episode ?: 1,
+                                                    )
+                                                    putExtra(PlayerActivity.EXTRA_TITLE, item.title)
+                                                    putExtra(
+                                                        PlayerActivity.EXTRA_THUMBNAIL,
+                                                        item.thumbnail,
+                                                    )
+                                                }
+                                                activity.startActivity(i)
+                                            },
                                         )
                                     }
                                     composable("schedule") {
@@ -398,6 +422,21 @@ class MainActivity : ComponentActivity() {
                                     composable("history") {
                                         HistoryScreen(
                                             onOpenAnime = { slug -> nav.navigate("detail/$slug") },
+                                            onContinue = { item ->
+                                                val i = Intent(activity, PlayerActivity::class.java).apply {
+                                                    putExtra(PlayerActivity.EXTRA_SLUG, item.slug)
+                                                    putExtra(
+                                                        PlayerActivity.EXTRA_EPISODE,
+                                                        item.episode ?: 1,
+                                                    )
+                                                    putExtra(PlayerActivity.EXTRA_TITLE, item.title)
+                                                    putExtra(
+                                                        PlayerActivity.EXTRA_THUMBNAIL,
+                                                        item.thumbnail,
+                                                    )
+                                                }
+                                                activity.startActivity(i)
+                                            },
                                         )
                                     }
                                     composable("subscribed") {

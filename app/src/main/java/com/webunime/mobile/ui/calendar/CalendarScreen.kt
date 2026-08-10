@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.RemoveRedEye
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,8 +53,12 @@ import com.webunime.mobile.data.CalendarResponse
 import com.webunime.mobile.data.ScheduleItem
 import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.launch
-import java.util.Calendar
-import java.util.Locale
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.Instant
 
 @Composable
 fun CalendarScreen(
@@ -105,7 +108,8 @@ fun CalendarScreen(
         else -> {
             val data = cal ?: return
             val day = data.days.getOrNull(selected)
-            val dateNums = remember(data.days.size) { weekDateNumbers(data.days.size) }
+            val weekDays = remember(data.days.size) { weekDaysJakarta(data.days.size) }
+            val selectedDate = weekDays.getOrNull(selected)?.date
             val prevLabel = data.days.getOrNull(selected - 1)?.shortLabel()
             val nextLabel = data.days.getOrNull(selected + 1)?.shortLabel()
 
@@ -155,7 +159,8 @@ fun CalendarScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = dateNums.getOrElse(index) { (index + 1).toString() },
+                                        text = weekDays.getOrNull(index)?.dayOfMonth?.toString()
+                                            ?: (index + 1).toString(),
                                         color = if (active) Color.White else WuColors.Muted,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
@@ -178,7 +183,11 @@ fun CalendarScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         items(day?.items.orEmpty()) { item ->
-                            ScheduleRow(item = item, onClick = { item.slug?.let(onOpenAnime) })
+                            ScheduleRow(
+                                item = item,
+                                dayDate = selectedDate,
+                                onClick = { item.slug?.let(onOpenAnime) },
+                            )
                         }
                     }
                 }
@@ -235,9 +244,32 @@ private fun DayNavPill(label: String, leading: Boolean, onClick: () -> Unit) {
     }
 }
 
+private enum class AirKind { AIRED, UPCOMING, LATE }
+
+private data class AirStatus(
+    val kind: AirKind,
+    val episode: Int,
+    val label: String,
+)
+
 @Composable
-private fun ScheduleRow(item: ScheduleItem, onClick: () -> Unit) {
-    val aired = !item.time.isNullOrBlank()
+private fun ScheduleRow(
+    item: ScheduleItem,
+    dayDate: LocalDate?,
+    onClick: () -> Unit,
+) {
+    val status = remember(item, dayDate) { resolveAirStatus(item, dayDate) }
+    val statusColor = when (status.kind) {
+        AirKind.AIRED -> WuColors.AccentYellow
+        AirKind.UPCOMING -> WuColors.Muted
+        AirKind.LATE -> WuColors.AccentRed
+    }
+    val barColor = when (status.kind) {
+        AirKind.AIRED -> WuColors.AccentYellow
+        AirKind.UPCOMING -> WuColors.SurfaceAlt
+        AirKind.LATE -> WuColors.AccentRed
+    }
+
     Row(
         Modifier
             .fillMaxWidth()
@@ -252,7 +284,7 @@ private fun ScheduleRow(item: ScheduleItem, onClick: () -> Unit) {
                 .width(3.dp)
                 .height(72.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(WuColors.AccentYellow),
+                .background(barColor),
         )
         Spacer(Modifier.width(10.dp))
         Text(
@@ -282,16 +314,12 @@ private fun ScheduleRow(item: ScheduleItem, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                item.type?.takeIf { it.isNotBlank() } ?: "Episode",
+                "Eps ${status.episode}",
                 color = WuColors.Muted,
                 fontSize = 12.sp,
             )
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Icon(Icons.Outlined.RemoveRedEye, null, tint = WuColors.Muted, modifier = Modifier.size(13.dp))
-                    Text("—", color = WuColors.Muted, fontSize = 11.sp)
-                }
                 if (!item.rating.isNullOrBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                         Icon(Icons.Outlined.Star, null, tint = WuColors.AccentYellow, modifier = Modifier.size(13.dp))
@@ -305,11 +333,11 @@ private fun ScheduleRow(item: ScheduleItem, onClick: () -> Unit) {
                     Modifier
                         .size(7.dp)
                         .clip(CircleShape)
-                        .background(if (aired) WuColors.AccentYellow else WuColors.Muted),
+                        .background(statusColor),
                 )
                 Text(
-                    if (aired) "Sudah Tayang" else "Menunggu Update Baru",
-                    color = if (aired) WuColors.AccentYellow else WuColors.Muted,
+                    status.label,
+                    color = statusColor,
                     fontSize = 11.sp,
                 )
             }
@@ -331,13 +359,72 @@ private fun com.webunime.mobile.data.ScheduleDay.shortLabel(): String {
     }
 }
 
-private fun weekDateNumbers(count: Int): List<String> {
-    val cal = Calendar.getInstance(Locale("id", "ID"))
-    // Mulai dari Minggu minggu ini
-    cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-    return (0 until count).map {
-        val n = cal.get(Calendar.DAY_OF_MONTH).toString()
-        cal.add(Calendar.DAY_OF_MONTH, 1)
-        n
+private data class WeekDayInfo(val dayOfMonth: Int, val date: LocalDate)
+
+/** Senin–Minggu minggu berjalan (Asia/Jakarta), selaras urutan API. */
+private fun weekDaysJakarta(count: Int): List<WeekDayInfo> {
+    val zone = ZoneId.of("Asia/Jakarta")
+    val today = LocalDate.now(zone)
+    val monday = today.with(DayOfWeek.MONDAY)
+    return (0 until count).map { i ->
+        val d = monday.plusDays(i.toLong())
+        WeekDayInfo(dayOfMonth = d.dayOfMonth, date = d)
     }
+}
+
+private fun resolveAirStatus(item: ScheduleItem, dayDate: LocalDate?): AirStatus {
+    val zone = ZoneId.of("Asia/Jakarta")
+    val now = ZonedDateTime.now(zone)
+    val latest = item.latest_episode?.takeIf { it > 0 } ?: 0
+    val nextEp = latest + 1
+    val date = dayDate ?: now.toLocalDate()
+    val airAt = parseAirAt(date, item.time, zone)
+    val releasedOk = releaseCoversAirSlot(
+        releasedAtRaw = item.latest_released_at,
+        dayDate = date,
+        airAt = airAt,
+        zone = zone,
+    )
+
+    if (latest > 0 && releasedOk) {
+        return AirStatus(AirKind.AIRED, latest, "Sudah Tayang")
+    }
+    if (now.isBefore(airAt)) {
+        return AirStatus(AirKind.UPCOMING, nextEp, "Belum Tayang")
+    }
+    return AirStatus(AirKind.LATE, nextEp, "Belum Tayang (Terlambat)")
+}
+
+private fun parseAirAt(
+    date: LocalDate,
+    timeRaw: String?,
+    zone: ZoneId,
+): ZonedDateTime {
+    val time = timeRaw?.trim().orEmpty()
+    if (time.isEmpty()) return date.atTime(23, 59).atZone(zone)
+    val parts = time.split(":")
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 23
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 59
+    return date.atTime(hour.coerceIn(0, 23), minute.coerceIn(0, 59)).atZone(zone)
+}
+
+private fun releaseCoversAirSlot(
+    releasedAtRaw: String?,
+    dayDate: LocalDate,
+    airAt: ZonedDateTime,
+    zone: ZoneId,
+): Boolean {
+    val released = parseReleasedAt(releasedAtRaw, zone) ?: return false
+    if (released.toLocalDate() == dayDate) return true
+    if (!released.isBefore(airAt.minusHours(12))) return true
+    return false
+}
+
+private fun parseReleasedAt(raw: String?, zone: ZoneId): ZonedDateTime? {
+    if (raw.isNullOrBlank()) return null
+    val s = raw.trim()
+    runCatching { return Instant.parse(s).atZone(zone) }
+    runCatching { return LocalDateTime.parse(s).atZone(zone) }
+    runCatching { return LocalDate.parse(s.take(10)).atStartOfDay(zone) }
+    return null
 }

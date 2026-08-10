@@ -8,6 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -143,9 +146,27 @@ class PlayerActivity : ComponentActivity() {
                         } else {
                             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         }
+                        setImmersiveFullscreen(full)
                     },
                 )
             }
+        }
+    }
+
+    override fun onDestroy() {
+        setImmersiveFullscreen(false)
+        super.onDestroy()
+    }
+
+    /** Sembunyikan status bar + nav bar saat fullscreen landscape. */
+    private fun setImmersiveFullscreen(full: Boolean) {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        if (full) {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 
@@ -210,6 +231,21 @@ private fun PlayerScreen(
             fullscreen = false
             onFullscreenChange(false)
         } else {
+            val player = exoPlayer
+            if (player != null) {
+                val pos = player.currentPosition.coerceAtLeast(0L)
+                val dur = player.duration.coerceAtLeast(0L)
+                if (dur > 0L && pos > 1_000L) {
+                    app.watchHistory.record(
+                        slug = slug,
+                        title = title,
+                        thumbnail = cover,
+                        episode = currentEpisode,
+                        positionMs = pos,
+                        durationMs = dur,
+                    )
+                }
+            }
             onBack(currentEpisode, title, cover)
         }
     }
@@ -251,12 +287,25 @@ private fun PlayerScreen(
 
     LaunchedEffect(exoPlayer) {
         val player = exoPlayer ?: return@LaunchedEffect
+        var tick = 0
         while (true) {
             positionMs = player.currentPosition.coerceAtLeast(0L)
             durationMs = player.duration.coerceAtLeast(0L)
             isPlaying = player.playWhenReady &&
                 player.playbackState != Player.STATE_ENDED &&
                 player.playbackState != Player.STATE_IDLE
+            tick++
+            // ~setiap 5 detik
+            if (tick % 12 == 0 && durationMs > 0L && positionMs > 2_000L) {
+                app.watchHistory.record(
+                    slug = slug,
+                    title = title,
+                    thumbnail = cover,
+                    episode = currentEpisode,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                )
+            }
             delay(400)
         }
     }
@@ -267,27 +316,51 @@ private fun PlayerScreen(
         controlsVisible = false
     }
 
-    DisposableEffect(exoPlayer, autoNext, nextEpisode) {
+    DisposableEffect(exoPlayer, autoNext, nextEpisode, slug, currentEpisode) {
         val player = exoPlayer
         if (player == null) {
             return@DisposableEffect onDispose { }
         }
+        var seekDone = false
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY && !seekDone) {
+                    seekDone = true
+                    val saved = app.watchHistory.list()
+                        .firstOrNull { it.slug == slug && it.episode == currentEpisode }
+                    val pos = saved?.positionMs ?: 0L
+                    if (pos > 3_000L && player.duration > 0 && pos < player.duration - 5_000L) {
+                        player.seekTo(pos)
+                    }
+                }
                 if (playbackState == Player.STATE_ENDED && autoNext) {
                     nextEpisode?.let { currentEpisode = it }
                 }
             }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            val pos = player.currentPosition.coerceAtLeast(0L)
+            val dur = player.duration.coerceAtLeast(0L)
+            if (dur > 0L && pos > 1_000L) {
+                app.watchHistory.record(
+                    slug = slug,
+                    title = title,
+                    thumbnail = cover,
+                    episode = currentEpisode,
+                    positionMs = pos,
+                    durationMs = dur,
+                )
+            }
+            player.removeListener(listener)
+        }
     }
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding(),
+            .background(if (fullscreen) Color.Black else MaterialTheme.colorScheme.background)
+            .then(if (fullscreen) Modifier else Modifier.statusBarsPadding()),
     ) {
         val playerModifier = if (fullscreen) {
             Modifier

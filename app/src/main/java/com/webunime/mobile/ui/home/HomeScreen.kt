@@ -40,12 +40,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.HomeResponse
+import com.webunime.mobile.ui.components.ContinueWatchingSection
 import com.webunime.mobile.ui.components.HomePremiumPromo
 import com.webunime.mobile.ui.components.HomeUserHeader
 import com.webunime.mobile.ui.components.HorizontalWibukuPosterRow
 import com.webunime.mobile.ui.components.SectionHeader
 import com.webunime.mobile.ui.components.WibukuPosterCard
 import com.webunime.mobile.ui.theme.WuColors
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 
 @Composable
@@ -55,6 +60,8 @@ fun HomeScreen(
     onOpenSchedule: () -> Unit = {},
     onOpenAccount: () -> Unit = {},
     onOpenPremium: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onContinueWatch: (com.webunime.mobile.data.WatchHistoryItem) -> Unit = { onOpenAnime(it.slug) },
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
@@ -65,6 +72,18 @@ fun HomeScreen(
     var loading by remember { mutableStateOf(true) }
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var newExpanded by remember { mutableStateOf(false) }
+    var continueItems by remember { mutableStateOf(app.watchHistory.continueWatching()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                continueItems = app.watchHistory.continueWatching()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     fun reload(genre: String? = selectedGenre) {
         scope.launch {
@@ -129,6 +148,14 @@ fun HomeScreen(
 
                 item {
                     HomePremiumPromo(onOpenPremium = onOpenPremium)
+                }
+
+                item {
+                    ContinueWatchingSection(
+                        items = continueItems,
+                        onOpenItem = onContinueWatch,
+                        onSeeAll = onOpenHistory,
+                    )
                 }
 
                 item {
