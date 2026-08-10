@@ -13,8 +13,8 @@ android {
         applicationId = "com.webunime.mobile"
         minSdk = 24
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.2.3"
+        versionCode = 15
+        versionName = "0.2.4"
 
         buildConfigField(
             "String",
@@ -24,7 +24,7 @@ android {
         buildConfigField(
             "String",
             "GOOGLE_WEB_CLIENT_ID",
-            "\"347556929487-sjmvjtp5aeshtourc8eucreamgpf5rgd.apps.googleusercontent.com\"",
+            "\"347556929487-dvblluel4fml5jj4l65takpqqatf72vp.apps.googleusercontent.com\"",
         )
         buildConfigField(
             "String",

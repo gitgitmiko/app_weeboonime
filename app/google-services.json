@@ -21,6 +21,10 @@
             "package_name": "com.webunime.mobile",
             "certificate_hash": "91ac0f228517d462ed4e555303f28b7a095c714e"
           }
+        },
+        {
+          "client_id": "347556929487-dvblluel4fml5jj4l65takpqqatf72vp.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [
@@ -32,7 +36,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "347556929487-sjmvjtp5aeshtourc8eucreamgpf5rgd.apps.googleusercontent.com",
+              "client_id": "347556929487-dvblluel4fml5jj4l65takpqqatf72vp.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
