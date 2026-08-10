@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -33,18 +35,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,17 +69,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -80,12 +91,15 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import coil.compose.AsyncImage
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.EpisodeSummary
 import com.webunime.mobile.data.PlayerRouter
 import com.webunime.mobile.data.PlayerServer
 import com.webunime.mobile.ui.theme.WebunimeTheme
+import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -99,6 +113,7 @@ class PlayerActivity : ComponentActivity() {
         val slug = intent.getStringExtra(EXTRA_SLUG).orEmpty()
         val startEpisode = intent.getIntExtra(EXTRA_EPISODE, 1)
         val animeTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        val thumbnail = intent.getStringExtra(EXTRA_THUMBNAIL).orEmpty()
         val app = application as WebunimeApp
 
         setContent {
@@ -107,7 +122,19 @@ class PlayerActivity : ComponentActivity() {
                     slug = slug,
                     startEpisode = startEpisode,
                     animeTitle = animeTitle,
-                    onBack = { finish() },
+                    thumbnail = thumbnail,
+                    app = app,
+                    onBack = { ep, title, thumb ->
+                        app.nowPlaying.set(
+                            com.webunime.mobile.data.player.NowPlaying(
+                                slug = slug,
+                                title = title.ifBlank { animeTitle },
+                                thumbnail = thumb.ifBlank { thumbnail },
+                                episode = ep,
+                            ),
+                        )
+                        finish()
+                    },
                     loadEpisode = { s, ep -> app.catalogApi.episode(s, ep) },
                     loadAnime = { s -> app.catalogApi.anime(s) },
                     onFullscreenChange = { full ->
@@ -126,6 +153,7 @@ class PlayerActivity : ComponentActivity() {
         const val EXTRA_SLUG = "slug"
         const val EXTRA_EPISODE = "episode"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_THUMBNAIL = "thumbnail"
     }
 }
 
@@ -138,7 +166,9 @@ private fun PlayerScreen(
     slug: String,
     startEpisode: Int,
     animeTitle: String,
-    onBack: () -> Unit,
+    thumbnail: String,
+    app: WebunimeApp,
+    onBack: (episode: Int, title: String, thumbnail: String) -> Unit,
     loadEpisode: suspend (String, Int) -> com.webunime.mobile.data.EpisodePlayback,
     loadAnime: suspend (String) -> com.webunime.mobile.data.AnimeDetail,
     onFullscreenChange: (Boolean) -> Unit,
@@ -146,6 +176,8 @@ private fun PlayerScreen(
     var currentEpisode by remember { mutableIntStateOf(startEpisode) }
     var episodes by remember { mutableStateOf<List<EpisodeSummary>>(emptyList()) }
     var title by remember { mutableStateOf(animeTitle) }
+    var cover by remember { mutableStateOf(thumbnail) }
+    var synopsis by remember { mutableStateOf("") }
     var episodeTitle by remember { mutableStateOf(animeTitle) }
     var players by remember { mutableStateOf<List<PlayerServer>>(emptyList()) }
     var selectedServer by remember { mutableIntStateOf(0) }
@@ -173,11 +205,22 @@ private fun PlayerScreen(
 
     val currentUrl = players.getOrNull(selectedServer)?.url.orEmpty()
 
+    BackHandler {
+        if (fullscreen) {
+            fullscreen = false
+            onFullscreenChange(false)
+        } else {
+            onBack(currentEpisode, title, cover)
+        }
+    }
+
     LaunchedEffect(slug) {
         runCatching { loadAnime(slug) }
             .onSuccess { detail ->
                 title = detail.displayTitle().ifBlank { animeTitle }
                 episodes = detail.episodes
+                cover = detail.thumbnail?.takeIf { it.isNotBlank() } ?: thumbnail
+                synopsis = detail.sinopsis.orEmpty()
             }
     }
 
@@ -350,7 +393,7 @@ private fun PlayerScreen(
                                 fullscreen = false
                                 onFullscreenChange(false)
                             } else {
-                                onBack()
+                                onBack(currentEpisode, title, cover)
                             }
                         }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
@@ -465,8 +508,8 @@ private fun PlayerScreen(
                                         .weight(1f)
                                         .padding(horizontal = 6.dp),
                                     colors = SliderDefaults.colors(
-                                        thumbColor = Color.White,
-                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                        thumbColor = Color(0xFFE53935),
+                                        activeTrackColor = Color(0xFFE53935),
                                         inactiveTrackColor = Color.White.copy(alpha = 0.3f),
                                     ),
                                 )
@@ -599,70 +642,149 @@ private fun PlayerScreen(
         }
 
         if (!fullscreen) {
-            Column(
+            val unlocks by app.episodeUnlocks.unlocksFlow.collectAsStateWithLifecycle(initialValue = emptySet())
+            val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
+            val isPremium = profile?.effectivePremium() == true
+            var synopsisExpanded by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+
+            LazyColumn(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                contentPadding = PaddingValues(bottom = 20.dp),
             ) {
-                Text(
-                    text = episodeTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "Episode",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surface)
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                ) {
-                    val list = if (episodes.isEmpty()) {
-                        listOf(EpisodeSummary(episode = currentEpisode, title = episodeTitle))
-                    } else {
-                        episodes.asReversed()
-                    }
-                    items(list, key = { it.episode ?: it.title ?: it.hashCode() }) { ep ->
-                        val n = ep.episode ?: return@items
-                        val selected = n == currentEpisode
-                        Surface(
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                item {
+                    PlayerActionPills(
+                        qualityLabel = players.getOrNull(selectedServer)
+                            ?.let { PlayerRouter.qualityLabel(it) } ?: "Auto",
+                        onQuality = {
+                            bottomSheet = if (bottomSheet == BottomSheet.Quality) {
+                                BottomSheet.None
                             } else {
-                                Color.Transparent
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { if (n != currentEpisode) currentEpisode = n },
-                        ) {
-                            Row(
+                                BottomSheet.Quality
+                            }
+                            controlsVisible = true
+                        },
+                    )
+                }
+                item {
+                    PlayerAnimeHeader(
+                        title = title,
+                        cover = cover,
+                        episode = currentEpisode,
+                    )
+                }
+                if (synopsis.isNotBlank()) {
+                    item {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+                            Text(
+                                text = synopsis,
+                                color = Color(0xFFA0A0A1),
+                                fontSize = 13.sp,
+                                maxLines = if (synopsisExpanded) Int.MAX_VALUE else 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                if (synopsisExpanded) "Sembunyikan" else "Selengkapnya",
+                                color = Color(0xFF64B5F6),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .clickable { synopsisExpanded = !synopsisExpanded }
+                                    .padding(top = 4.dp),
+                            )
+                        }
+                    }
+                }
+                item {
+                    Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        com.webunime.mobile.ui.detail.PremiumBanner(onClick = { /* account via reopen */ })
+                    }
+                }
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Episode List",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(com.webunime.mobile.R.drawable.ic_key),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "${profile?.keys ?: 0}",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                item {
+                    val nums = if (episodes.isEmpty()) {
+                        listOf(currentEpisode)
+                    } else {
+                        episodes.mapNotNull { it.episode }.distinct().sorted()
+                    }
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(nums) { n ->
+                            val unlocked = isPremium ||
+                                unlocks.contains(
+                                    com.webunime.mobile.data.user.EpisodeUnlockStore.key(slug, n),
+                                ) ||
+                                n == currentEpisode
+                            val selected = n == currentEpisode
+                            Box(
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (selected) Color.White else Color(0xFF2B2C2F),
+                                    )
+                                    .clickable {
+                                        if (n == currentEpisode) return@clickable
+                                        if (unlocked || isPremium) {
+                                            currentEpisode = n
+                                        } else {
+                                            scope.launch {
+                                                val res = app.userRepository.consumeKeyForEpisode(slug, n)
+                                                res.onSuccess {
+                                                    app.episodeUnlocks.markUnlocked(slug, n)
+                                                    runCatching { app.userRepository.grantEpisodeXp() }
+                                                    currentEpisode = n
+                                                }
+                                            }
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = ep.title?.takeIf { it.isNotBlank() } ?: "Episode $n",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onBackground
-                                    },
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f),
+                                    "$n",
+                                    color = if (selected) Color.Black else Color.White,
+                                    fontWeight = FontWeight.Bold,
                                 )
-                                if (selected) {
-                                    Text(
-                                        "Sedang diputar",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
+                                if (!unlocked && !selected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.85f),
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(4.dp)
+                                            .size(12.dp),
                                     )
                                 }
                             }
@@ -692,6 +814,88 @@ private fun TransportButton(
             tint = if (enabled) Color.White else Color.White.copy(alpha = 0.35f),
             modifier = Modifier.size(size),
         )
+    }
+}
+
+@Composable
+private fun PlayerActionPills(
+    qualityLabel: String,
+    onQuality: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Pill(Icons.Default.ThumbUp, "Like")
+        Pill(Icons.Default.ThumbDown, "Dislike")
+        Pill(Icons.Default.PlayArrow, "$qualityLabel Quality", onClick = onQuality)
+        Pill(Icons.Default.Download, "Download")
+    }
+}
+
+@Composable
+private fun Pill(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit = {},
+) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(WuColors.SurfaceAlt)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(14.dp))
+        Text(label, color = Color.White, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun PlayerAnimeHeader(
+    title: String,
+    cover: String,
+    episode: Int,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = cover,
+            contentDescription = title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(WuColors.SurfaceAlt),
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Episode $episode", color = WuColors.Muted, fontSize = 12.sp)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Default.Visibility, null, tint = WuColors.Muted, modifier = Modifier.size(12.dp))
+            }
+        }
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(WuColors.AccentYellow)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Flag, null, tint = Color.Black, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Report", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

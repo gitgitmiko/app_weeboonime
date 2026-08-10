@@ -94,6 +94,7 @@ fun DetailScreen(
     val isPremium = profile?.effectivePremium() == true
 
     fun openPlayer(n: Int, title: String, thumbnail: String) {
+        app.nowPlaying.clear()
         app.watchHistory.record(
             slug = slug,
             title = title,
@@ -104,6 +105,7 @@ fun DetailScreen(
             putExtra(PlayerActivity.EXTRA_SLUG, slug)
             putExtra(PlayerActivity.EXTRA_EPISODE, n)
             putExtra(PlayerActivity.EXTRA_TITLE, title)
+            putExtra(PlayerActivity.EXTRA_THUMBNAIL, thumbnail)
         }
         context.startActivity(i)
     }

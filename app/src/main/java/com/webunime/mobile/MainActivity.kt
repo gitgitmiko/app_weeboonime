@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,7 +44,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import android.content.Intent
 import android.widget.Toast
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.ui.theme.WuColors
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -61,6 +64,8 @@ import com.webunime.mobile.ui.calendar.CalendarScreen
 import com.webunime.mobile.ui.detail.DetailScreen
 import com.webunime.mobile.ui.history.HistoryScreen
 import com.webunime.mobile.ui.home.HomeScreen
+import com.webunime.mobile.ui.player.MiniPlayerBar
+import com.webunime.mobile.ui.player.PlayerActivity
 import com.webunime.mobile.ui.search.SearchScreen
 import com.webunime.mobile.ui.subscribed.SubscribedScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
@@ -253,58 +258,77 @@ class MainActivity : ComponentActivity() {
                             val backStack by nav.currentBackStackEntryAsState()
                             val route = backStack?.destination?.route.orEmpty()
                             val showBottom = route in bottomTabs.map { it.route }
+                            val nowPlaying by app.nowPlaying.current.collectAsStateWithLifecycle()
 
                             Scaffold(
                                 containerColor = WuColors.Bg,
                                 bottomBar = {
-                                    if (showBottom) {
-                                        NavigationBar(
-                                            containerColor = WuColors.NavBar,
-                                            contentColor = Color.White,
-                                            tonalElevation = 0.dp,
-                                        ) {
-                                            bottomTabs.forEach { tab ->
-                                                val selected = route == tab.route
-                                                NavigationBarItem(
-                                                    selected = selected,
-                                                    onClick = {
-                                                        nav.navigate(tab.route) {
-                                                            popUpTo(nav.graph.findStartDestination().id) {
-                                                                saveState = true
+                                    Column {
+                                        nowPlaying?.let { playing ->
+                                            MiniPlayerBar(
+                                                playing = playing,
+                                                onOpen = {
+                                                    app.nowPlaying.clear()
+                                                    val i = Intent(activity, PlayerActivity::class.java).apply {
+                                                        putExtra(PlayerActivity.EXTRA_SLUG, playing.slug)
+                                                        putExtra(PlayerActivity.EXTRA_EPISODE, playing.episode)
+                                                        putExtra(PlayerActivity.EXTRA_TITLE, playing.title)
+                                                        putExtra(PlayerActivity.EXTRA_THUMBNAIL, playing.thumbnail)
+                                                    }
+                                                    activity.startActivity(i)
+                                                },
+                                                onClose = { app.nowPlaying.clear() },
+                                            )
+                                        }
+                                        if (showBottom) {
+                                            NavigationBar(
+                                                containerColor = WuColors.NavBar,
+                                                contentColor = Color.White,
+                                                tonalElevation = 0.dp,
+                                            ) {
+                                                bottomTabs.forEach { tab ->
+                                                    val selected = route == tab.route
+                                                    NavigationBarItem(
+                                                        selected = selected,
+                                                        onClick = {
+                                                            nav.navigate(tab.route) {
+                                                                popUpTo(nav.graph.findStartDestination().id) {
+                                                                    saveState = true
+                                                                }
+                                                                launchSingleTop = true
+                                                                restoreState = true
                                                             }
-                                                            launchSingleTop = true
-                                                            restoreState = true
-                                                        }
-                                                    },
-                                                    icon = {
-                                                        if (tab.route == "timeline") {
-                                                            Box(
-                                                                Modifier
-                                                                    .size(26.dp)
-                                                                    .clip(CircleShape)
-                                                                    .background(WuColors.SurfaceAlt),
-                                                                contentAlignment = Alignment.Center,
-                                                            ) {
-                                                                Icon(
-                                                                    tab.icon,
-                                                                    contentDescription = tab.label,
-                                                                    modifier = Modifier.size(16.dp),
-                                                                )
+                                                        },
+                                                        icon = {
+                                                            if (tab.route == "timeline") {
+                                                                Box(
+                                                                    Modifier
+                                                                        .size(26.dp)
+                                                                        .clip(CircleShape)
+                                                                        .background(WuColors.SurfaceAlt),
+                                                                    contentAlignment = Alignment.Center,
+                                                                ) {
+                                                                    Icon(
+                                                                        tab.icon,
+                                                                        contentDescription = tab.label,
+                                                                        modifier = Modifier.size(16.dp),
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                Icon(tab.icon, contentDescription = tab.label)
                                                             }
-                                                        } else {
-                                                            Icon(tab.icon, contentDescription = tab.label)
-                                                        }
-                                                    },
-                                                    label = { Text(tab.label) },
-                                                    alwaysShowLabel = false,
-                                                    colors = NavigationBarItemDefaults.colors(
-                                                        selectedIconColor = Color.White,
-                                                        selectedTextColor = Color.White,
-                                                        unselectedIconColor = WuColors.Muted,
-                                                        unselectedTextColor = WuColors.Muted,
-                                                        indicatorColor = WuColors.NavActive,
-                                                    ),
-                                                )
+                                                        },
+                                                        label = { Text(tab.label) },
+                                                        alwaysShowLabel = false,
+                                                        colors = NavigationBarItemDefaults.colors(
+                                                            selectedIconColor = Color.White,
+                                                            selectedTextColor = Color.White,
+                                                            unselectedIconColor = WuColors.Muted,
+                                                            unselectedTextColor = WuColors.Muted,
+                                                            indicatorColor = WuColors.NavActive,
+                                                        ),
+                                                    )
+                                                }
                                             }
                                         }
                                     }

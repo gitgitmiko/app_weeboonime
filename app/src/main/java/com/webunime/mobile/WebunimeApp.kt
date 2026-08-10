@@ -7,6 +7,7 @@ import com.webunime.mobile.data.WatchHistoryStore
 import com.webunime.mobile.data.ads.RewardedAdManager
 import com.webunime.mobile.data.auth.AuthRepository
 import com.webunime.mobile.data.billing.BillingRepository
+import com.webunime.mobile.data.player.NowPlayingController
 import com.webunime.mobile.data.user.EpisodeUnlockStore
 import com.webunime.mobile.data.user.UserRepository
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,8 @@ class WebunimeApp : Application() {
         private set
     lateinit var episodeUnlocks: EpisodeUnlockStore
         private set
+    lateinit var nowPlaying: NowPlayingController
+        private set
     lateinit var authRepository: AuthRepository
         private set
     lateinit var rewardedAds: RewardedAdManager
@@ -41,6 +44,7 @@ class WebunimeApp : Application() {
         session = SessionStore(this)
         userRepository = UserRepository(this)
         episodeUnlocks = EpisodeUnlockStore(this)
+        nowPlaying = NowPlayingController()
         authRepository = AuthRepository()
         rewardedAds = RewardedAdManager(this)
         billingRepository = BillingRepository(this)
