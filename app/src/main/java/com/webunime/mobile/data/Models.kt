@@ -9,6 +9,11 @@ data class HomeResponse(
     val latest: List<LatestItem> = emptyList(),
     val movies: List<AnimeCard> = emptyList(),
     val scheduleToday: ScheduleDay? = null,
+    val genres: List<String> = emptyList(),
+    val newUpdate: List<AnimeCard> = emptyList(),
+    val hot: List<AnimeCard> = emptyList(),
+    val completed: List<AnimeCard> = emptyList(),
+    val selectedGenre: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -34,8 +39,10 @@ data class AnimeCard(
     val thumbnail: String? = null,
     val rating: String? = null,
     val type: String? = null,
+    val status: String? = null,
     val genre: List<String>? = null,
     val episodes_count: Int? = null,
+    val episode: Int? = null,
 ) {
     fun displayTitle(): String = judul ?: nama ?: slug ?: "Tanpa judul"
 }

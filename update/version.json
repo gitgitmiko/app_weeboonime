@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 11,
-  "versionName": "0.2.0",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.0/Weeboonime-v0.2.0.apk",
-  "changelog": "UI/UX 5-tab mendekati Wibuku: Home grid+search, Jadwal Tayang, Riwayat timeline, Subscribed & Timeline empty state."
+  "versionCode": 12,
+  "versionName": "0.2.1",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.1/Weeboonime-v0.2.1.apk",
+  "changelog": "Home ala Wibuku: New Update 3x4/Show more, genre chips, Hot & Completed. Katalog HP dari data/mobile (terpisah TV)."
 }

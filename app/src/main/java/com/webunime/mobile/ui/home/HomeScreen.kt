@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.webunime.mobile.WebunimeApp
+import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.HomeResponse
 import com.webunime.mobile.ui.components.HorizontalWibukuPosterRow
 import com.webunime.mobile.ui.components.SectionHeader
@@ -54,19 +57,21 @@ fun HomeScreen(
     var home by remember { mutableStateOf<HomeResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var selectedGenre by remember { mutableStateOf<String?>(null) }
+    var newExpanded by remember { mutableStateOf(false) }
 
-    fun reload() {
+    fun reload(genre: String? = selectedGenre) {
         scope.launch {
             loading = true
             error = null
-            runCatching { app.catalogApi.home() }
+            runCatching { app.catalogApi.home(genre) }
                 .onSuccess { home = it }
                 .onFailure { error = it.message ?: "Gagal memuat" }
             loading = false
         }
     }
 
-    LaunchedEffect(Unit) { reload() }
+    LaunchedEffect(Unit) { reload(null) }
 
     when {
         loading && home == null -> Box(
@@ -86,12 +91,27 @@ fun HomeScreen(
 
         else -> {
             val data = home ?: return
+            val newSource = data.newUpdate.ifEmpty {
+                data.latest.map {
+                    AnimeCard(
+                        slug = it.catalogSlug().ifBlank { null },
+                        judul = it.displayTitle(),
+                        thumbnail = it.thumbnail,
+                        episode = it.episode,
+                    )
+                }
+            }
+            val collapsedCount = 12 // 3x4
+            val expandedCount = 30 // 3x10
+            val visibleNew = newSource.take(if (newExpanded) expandedCount else collapsedCount)
+            val newRows = visibleNew.chunked(3)
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(WuColors.Bg)
                     .padding(contentPadding),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(bottom = 28.dp),
             ) {
                 item {
                     Row(
@@ -106,59 +126,105 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Icon(Icons.Default.Search, null, tint = WuColors.Muted)
-                        Text(
-                            "Cari Anime Di Sini",
-                            color = WuColors.Muted,
-                            fontSize = 15.sp,
-                        )
+                        Text("Cari Anime Di Sini", color = WuColors.Muted, fontSize = 15.sp)
                     }
                 }
 
-                if (data.latest.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "New Update Anime",
+                        action = "Lihat Jadwal >",
+                        onAction = onOpenSchedule,
+                    )
+                }
+
+                items(newRows.size) { rowIdx ->
+                    val row = newRows[rowIdx]
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        row.forEach { item ->
+                            WibukuPosterCard(
+                                title = item.displayTitle(),
+                                thumbnail = item.thumbnail,
+                                episodeLabel = item.episode?.let { "Eps $it" }
+                                    ?: item.episodes_count?.let { "Eps $it" },
+                                rating = item.rating,
+                                showNew = true,
+                                onClick = { item.slug?.let(onOpenAnime) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+                    }
+                }
+
+                if (newSource.size > collapsedCount) {
                     item {
-                        SectionHeader(
-                            title = "New Update Anime",
-                            action = "Lihat Jadwal >",
-                            onAction = onOpenSchedule,
+                        TextButton(
+                            onClick = { newExpanded = !newExpanded },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp),
+                        ) {
+                            Text(
+                                if (newExpanded) "Show less" else "Show more",
+                                color = WuColors.Link,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+
+                if (data.genres.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Genre",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         )
                     }
-                    val rows = data.latest.chunked(3)
-                    items(rows) { row ->
+                    item {
                         Row(
                             Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 14.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            row.forEach { item ->
-                                WibukuPosterCard(
-                                    title = item.displayTitle(),
-                                    thumbnail = item.thumbnail,
-                                    episodeLabel = item.episode?.let { "Eps $it" },
-                                    rating = null,
-                                    viewsLabel = null,
-                                    showNew = true,
+                            GenreChip(
+                                label = "All",
+                                selected = selectedGenre == null,
+                                onClick = {
+                                    selectedGenre = null
+                                    newExpanded = false
+                                    reload(null)
+                                },
+                            )
+                            data.genres.take(40).forEach { g ->
+                                GenreChip(
+                                    label = g,
+                                    selected = selectedGenre.equals(g, ignoreCase = true),
                                     onClick = {
-                                        val slug = item.catalogSlug()
-                                        if (slug.isNotBlank()) onOpenAnime(slug)
+                                        selectedGenre = g
+                                        newExpanded = false
+                                        reload(g)
                                     },
-                                    modifier = Modifier.weight(1f),
                                 )
-                            }
-                            repeat(3 - row.size) {
-                                Box(Modifier.weight(1f))
                             }
                         }
                     }
                 }
 
-                if (data.movies.isNotEmpty()) {
-                    item {
-                        SectionHeader(title = "Anime Movie")
-                    }
+                if (data.hot.isNotEmpty()) {
+                    item { SectionHeader(title = "Hot Anime") }
                     item {
                         HorizontalWibukuPosterRow(
-                            items = data.movies,
+                            items = data.hot,
                             titleOf = { it.displayTitle() },
                             thumbOf = { it.thumbnail },
                             ratingOf = { it.rating },
@@ -168,20 +234,27 @@ fun HomeScreen(
                     }
                 }
 
-                data.scheduleToday?.takeIf { it.items.isNotEmpty() }?.let { day ->
-                    item {
-                        SectionHeader(
-                            title = "Jadwal ${day.label ?: "Hari Ini"}",
-                            action = "Lihat Jadwal >",
-                            onAction = onOpenSchedule,
-                        )
-                    }
+                if (data.completed.isNotEmpty()) {
+                    item { SectionHeader(title = "Completed Anime") }
                     item {
                         HorizontalWibukuPosterRow(
-                            items = day.items,
+                            items = data.completed,
                             titleOf = { it.displayTitle() },
                             thumbOf = { it.thumbnail },
-                            episodeOf = { it.time },
+                            ratingOf = { it.rating },
+                            episodeOf = { it.episodes_count?.let { n -> "Eps $n" } },
+                            onClick = { it.slug?.let(onOpenAnime) },
+                        )
+                    }
+                }
+
+                if (data.movies.isNotEmpty() && selectedGenre == null) {
+                    item { SectionHeader(title = "Anime Movie") }
+                    item {
+                        HorizontalWibukuPosterRow(
+                            items = data.movies,
+                            titleOf = { it.displayTitle() },
+                            thumbOf = { it.thumbnail },
                             ratingOf = { it.rating },
                             onClick = { it.slug?.let(onOpenAnime) },
                         )
@@ -190,4 +263,22 @@ fun HomeScreen(
             }
         }
     }
+}
+
+@Composable
+private fun GenreChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        color = Color.White,
+        fontSize = 13.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) WuColors.AccentBlue else WuColors.SurfaceAlt)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }

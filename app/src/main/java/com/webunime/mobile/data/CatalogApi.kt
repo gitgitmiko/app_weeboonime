@@ -27,7 +27,12 @@ class CatalogApi(baseUrl: String) {
     private val detailAdapter = moshi.adapter(AnimeDetail::class.java)
     private val episodeAdapter = moshi.adapter(EpisodePlayback::class.java)
 
-    suspend fun home(): HomeResponse = get("/v1/home", homeAdapter)
+    suspend fun home(genre: String? = null): HomeResponse {
+        val q = if (!genre.isNullOrBlank()) {
+            "?genre=${java.net.URLEncoder.encode(genre, Charsets.UTF_8.name())}"
+        } else ""
+        return get("/v1/home$q", homeAdapter)
+    }
 
     suspend fun search(q: String, limit: Int = 30): SearchResponse =
         get("/v1/search?q=${java.net.URLEncoder.encode(q, Charsets.UTF_8.name())}&limit=$limit", searchAdapter)
