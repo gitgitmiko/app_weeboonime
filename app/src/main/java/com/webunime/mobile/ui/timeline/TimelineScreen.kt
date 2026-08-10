@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,16 +34,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.ui.theme.WuColors
 
 @Composable
 fun TimelineScreen(
     contentPadding: PaddingValues = PaddingValues(),
+    onOpenAccount: () -> Unit = {},
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
-    val name = app.session.displayName.ifBlank { "Weeboonime User" }
+    val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
+    val name = profile?.displayName
+        ?: app.session.displayName.ifBlank { "Weeboonime User" }
     val initial = name.take(1).uppercase()
+    val level = profile?.level ?: 1
+    val keys = profile?.keys ?: 0
+    val gems = profile?.gems ?: 0
 
     Box(
         Modifier
@@ -69,10 +77,14 @@ fun TimelineScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text("#11040801", color = WuColors.Muted, fontSize = 12.sp)
+                    Text(
+                        "Kunci $keys · Gem $gems",
+                        color = WuColors.Muted,
+                        fontSize = 12.sp,
+                    )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Lvl. 1",
+                        text = "Lvl. $level",
                         color = Color.White,
                         fontSize = 11.sp,
                         modifier = Modifier
@@ -81,8 +93,8 @@ fun TimelineScreen(
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     )
                 }
-                IconButton(onClick = { /* dummy settings */ }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
+                IconButton(onClick = onOpenAccount) {
+                    Icon(Icons.Default.Settings, contentDescription = "Akun", tint = Color.White)
                 }
             }
 
@@ -91,7 +103,7 @@ fun TimelineScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "Belum ada aktivitas teman\nKamu bisa menambahkan teman dari komentar orang lain di anime favoritmu",
+                    text = "Belum ada aktivitas teman\nKamu bisa menambahkan teman dari komentar orang lain di anime favoritmu\n\nKetuk ikon gear untuk ekonomi akun (kunci / iklan / Premium).",
                     color = Color.White,
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,

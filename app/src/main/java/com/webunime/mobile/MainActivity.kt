@@ -26,10 +26,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.webunime.mobile.ui.theme.WuColors
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -48,6 +52,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.webunime.mobile.ui.account.AccountScreen
 import com.webunime.mobile.ui.auth.LegalDoc
 import com.webunime.mobile.ui.auth.LegalScreen
 import com.webunime.mobile.ui.auth.LoginScreen
@@ -62,6 +67,7 @@ import com.webunime.mobile.ui.theme.WebunimeTheme
 import com.webunime.mobile.ui.timeline.TimelineScreen
 import com.webunime.mobile.ui.update.AppUpdateHost
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private data class BottomTab(
     val route: String,
@@ -87,8 +93,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             WebunimeTheme {
                 val app = LocalContext.current.applicationContext as WebunimeApp
+                val activity = this@MainActivity
+                val scope = rememberCoroutineScope()
                 var showSplash by remember { mutableStateOf(true) }
-                var loggedIn by remember { mutableStateOf(app.session.isLoggedIn) }
+                var loggedIn by remember {
+                    mutableStateOf(app.session.isLoggedIn || app.authRepository.isSignedIn())
+                }
+
+                val googleSignInLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult(),
+                ) { result ->
+                    scope.launch {
+                        val res = app.authRepository.handleGoogleSignInResult(result.data)
+                        res.onSuccess {
+                            val user = app.authRepository.currentUser
+                            app.session.loginAs(
+                                user?.displayName ?: user?.email ?: "Google User",
+                            )
+                            runCatching { app.userRepository.pullCloudIfSignedIn() }
+                            loggedIn = true
+                        }.onFailure {
+                            Toast.makeText(
+                                activity,
+                                it.message ?: "Login Google gagal",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                }
 
                 LaunchedEffect(Unit) {
                     delay(1800)
@@ -140,8 +172,16 @@ class MainActivity : ComponentActivity() {
                                 composable("login") {
                                     LoginScreen(
                                         onGoogleLogin = {
-                                            app.session.loginAs("Google User")
-                                            loggedIn = true
+                                            val intent = app.authRepository.signInIntent(activity)
+                                            if (intent == null) {
+                                                Toast.makeText(
+                                                    activity,
+                                                    "Cek GOOGLE_WEB_CLIENT_ID / google-services.json",
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                            } else {
+                                                googleSignInLauncher.launch(intent)
+                                            }
                                         },
                                         onTesterLogin = {
                                             app.session.loginAs("Tester")
@@ -254,7 +294,12 @@ class MainActivity : ComponentActivity() {
                                         SubscribedScreen()
                                     }
                                     composable("timeline") {
-                                        TimelineScreen()
+                                        TimelineScreen(
+                                            onOpenAccount = { nav.navigate("account") },
+                                        )
+                                    }
+                                    composable("account") {
+                                        AccountScreen()
                                     }
                                     composable("search") {
                                         SearchScreen(
@@ -269,6 +314,11 @@ class MainActivity : ComponentActivity() {
                                         DetailScreen(
                                             slug = slug,
                                             onBack = { nav.popBackStack() },
+                                            onGoAccount = {
+                                                nav.navigate("account") {
+                                                    launchSingleTop = true
+                                                }
+                                            },
                                         )
                                     }
                                 }

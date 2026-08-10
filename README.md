@@ -1,58 +1,40 @@
-# WEBUNIME Mobile
+# Weeboonime (WEBUNIME Mobile)
 
-App Android HP (Jetpack Compose) untuk katalog WEBUNIME.
+App Android HP (Jetpack Compose) — katalog anime + ekonomi Fase 1 + OTA self-update.
 
-Lokasi project (sama isinya):
+## API katalog
 
-- Workspace: `Weeboonime/mobile`
-- Build path: `Documents/Project/App WEBUNIME Mobile`
+https://webunime-catalog-api.vercel.app
 
-## API
+## Fitur
 
-Base URL: https://webunime-catalog-api.vercel.app
+- Home / Jadwal / History / Subscribed / Timeline (UX ala Wibuku)
+- Login Google (Firebase Auth) + sync Firestore
+- **3 kunci awal**; 1 episode = 1 kunci (Premium bebas)
+- Rewarded AdMob (test ID) → +1 kunci; tukar 10 gem → 1 kunci
+- Play Billing product ID: `webunime_premium_1m/3m/6m/12m`
+- OTA: baca `update/version.json` di repo ini
 
-## Build
+## Build release (OTA)
 
 ```powershell
-cd "C:\Users\sjatm\OneDrive\Documents\Project\App WEBUNIME Mobile"
+cd "c:\Users\sjatm\OneDrive\Documents\Project professional\Weeboonime\mobile"
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleRelease
 ```
 
-APK debug: `app\build\outputs\apk\debug\app-debug.apk`
+APK: `app/build/outputs/apk/release/app-release.apk`
 
-Atau buka folder di Android Studio → Run di emulator/HP.
+## Setup Firebase
 
-## Fitur MVP (Fase 0b)
+1. Project Firebase + Android app `com.webunime.mobile`
+2. `app/google-services.json` (SHA-1 debug sudah terdaftar)
+3. Auth → Google + Web client ID di `GOOGLE_WEB_CLIENT_ID`
+4. Firestore rules: `firestore.rules`
+5. (Opsional) Cloud Functions di `functions/`
 
-- Home: Anime Terbaru, Jadwal hari ini, Anime Movie
-- Cari (debounce)
-- Jadwal rilis Senin–Minggu
-- Detail + daftar episode
-- Player: ExoPlayer (URL media langsung) / WebView (embed)
-- Update in-app (OTA) seperti app TV
+## Cara test OTA di HP
 
-## Update in-app (development)
-
-App mengecek `update/version.json` di repo ini (GitHub raw + jsDelivr).
-Jika `versionCode` remote > yang terpasang, user bisa unduh & install APK langsung dari app.
-
-### Rilis update baru
-
-1. Naikkan `versionCode` / `versionName` di `app/build.gradle.kts`
-2. Build release/debug APK, rename misalnya `WEBUNIME-Mobile-v0.1.1.apk`
-3. Upload APK ke GitHub Releases: https://github.com/gitgitmiko/app_weeboonime/releases
-4. Update `update/version.json`:
-
-```json
-{
-  "versionCode": 2,
-  "versionName": "0.1.1",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.1.1/WEBUNIME-Mobile-v0.1.1.apk",
-  "changelog": "Perbaikan …"
-}
-```
-
-5. Commit + push `version.json` ke `main`
-
-HP yang sudah pasang versi lama akan mendapat dialog **Update tersedia** saat buka app.
+1. Buka app yang sudah terpasang (v0.2.1+)
+2. Dialog update muncul → unduh & install
+3. Atau unduh langsung: [Release terbaru](https://github.com/gitgitmiko/app_weeboonime/releases/latest)

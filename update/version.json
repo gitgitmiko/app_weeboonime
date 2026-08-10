@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 12,
-  "versionName": "0.2.1",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.1/Weeboonime-v0.2.1.apk",
-  "changelog": "Home ala Wibuku: New Update 3x4/Show more, genre chips, Hot & Completed. Katalog HP dari data/mobile (terpisah TV)."
+  "versionCode": 13,
+  "versionName": "0.2.2",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.2/Weeboonime-v0.2.2.apk",
+  "changelog": "Firebase Auth/Firestore + ekonomi kunci/gem/Premium. Login Google nyata. Gate nonton 1 kunci/episode."
 }

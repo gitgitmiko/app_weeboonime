@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeDetail
@@ -52,13 +53,46 @@ import kotlinx.coroutines.launch
 fun DetailScreen(
     slug: String,
     onBack: () -> Unit,
+    onGoAccount: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val activity = context as android.app.Activity
     val app = context.applicationContext as WebunimeApp
     val scope = rememberCoroutineScope()
     var detail by remember { mutableStateOf<AnimeDetail?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var pendingEpisode by remember { mutableStateOf<Int?>(null) }
+    var gateMessage by remember { mutableStateOf<String?>(null) }
+    val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
+
+    fun openPlayer(n: Int, title: String, thumbnail: String) {
+        app.watchHistory.record(
+            slug = slug,
+            title = title,
+            thumbnail = thumbnail,
+            episode = n,
+        )
+        val i = Intent(context, PlayerActivity::class.java).apply {
+            putExtra(PlayerActivity.EXTRA_SLUG, slug)
+            putExtra(PlayerActivity.EXTRA_EPISODE, n)
+            putExtra(PlayerActivity.EXTRA_TITLE, title)
+        }
+        context.startActivity(i)
+    }
+
+    fun tryWatch(n: Int, title: String, thumbnail: String) {
+        scope.launch {
+            val res = app.userRepository.consumeKeyForEpisode(slug, n)
+            res.onSuccess {
+                runCatching { app.userRepository.grantEpisodeXp() }
+                openPlayer(n, title, thumbnail)
+            }.onFailure {
+                pendingEpisode = n
+                gateMessage = it.message
+            }
+        }
+    }
 
     fun reload() {
         scope.launch {
@@ -72,6 +106,34 @@ fun DetailScreen(
     }
 
     LaunchedEffect(slug) { reload() }
+
+    if (pendingEpisode != null) {
+        com.webunime.mobile.ui.account.WatchGateDialog(
+            keys = profile?.keys ?: 0,
+            isPremium = profile?.effectivePremium() == true,
+            onWatchAd = {
+                scope.launch {
+                    val ok = app.rewardedAds.show(activity)
+                    if (ok) {
+                        app.userRepository.grantKeys(1)
+                        val ep = pendingEpisode
+                        val data = detail
+                        pendingEpisode = null
+                        if (ep != null && data != null) {
+                            tryWatch(ep, data.displayTitle(), data.thumbnail.orEmpty())
+                        }
+                    } else {
+                        app.rewardedAds.preload()
+                    }
+                }
+            },
+            onGoAccount = {
+                pendingEpisode = null
+                onGoAccount()
+            },
+            onDismiss = { pendingEpisode = null },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -158,18 +220,7 @@ fun DetailScreen(
                         val n = ep.episode ?: return@items
                         Button(
                             onClick = {
-                                app.watchHistory.record(
-                                    slug = slug,
-                                    title = data.displayTitle(),
-                                    thumbnail = data.thumbnail.orEmpty(),
-                                    episode = n,
-                                )
-                                val i = Intent(context, PlayerActivity::class.java).apply {
-                                    putExtra(PlayerActivity.EXTRA_SLUG, slug)
-                                    putExtra(PlayerActivity.EXTRA_EPISODE, n)
-                                    putExtra(PlayerActivity.EXTRA_TITLE, data.displayTitle())
-                                }
-                                context.startActivity(i)
+                                tryWatch(n, data.displayTitle(), data.thumbnail.orEmpty())
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
