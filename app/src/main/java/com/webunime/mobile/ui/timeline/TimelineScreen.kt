@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -29,13 +30,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.webunime.mobile.WebunimeApp
+import com.webunime.mobile.ui.components.EconomyChip
+import com.webunime.mobile.R
 import com.webunime.mobile.ui.theme.WuColors
 
 @Composable
@@ -47,10 +52,11 @@ fun TimelineScreen(
     val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
     val name = profile?.displayName
         ?: app.session.displayName.ifBlank { "Weeboonime User" }
-    val initial = name.take(1).uppercase()
+    val tag = profile?.publicTag() ?: "#GUEST"
     val level = profile?.level ?: 1
     val keys = profile?.keys ?: 0
     val gems = profile?.gems ?: 0
+    val photo = profile?.photoUrl
 
     Box(
         Modifier
@@ -72,26 +78,37 @@ fun TimelineScreen(
                         .background(WuColors.SurfaceAlt),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    if (!photo.isNullOrBlank()) {
+                        AsyncImage(
+                            model = photo,
+                            contentDescription = name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape),
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, tint = WuColors.Muted)
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text(
-                        "Kunci $keys · Gem $gems",
-                        color = WuColors.Muted,
-                        fontSize = 12.sp,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Lvl. $level",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(WuColors.SurfaceAlt)
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    )
+                    Text(tag, color = WuColors.Link, fontSize = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Lvl. $level",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(WuColors.SurfaceAlt)
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                        EconomyChip(iconRes = R.drawable.ic_key, value = "$keys", tint = WuColors.AccentYellow)
+                        EconomyChip(iconRes = R.drawable.ic_gem, value = "$gems", tint = WuColors.AccentBlue)
+                    }
                 }
                 IconButton(onClick = onOpenAccount) {
                     Icon(Icons.Default.Settings, contentDescription = "Akun", tint = Color.White)

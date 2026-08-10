@@ -18,6 +18,22 @@ data class UserProfile(
 
     fun xpToNextLevel(): Int = level * 50
 
+    fun xpProgress(): Float {
+        val need = xpToNextLevel().coerceAtLeast(1)
+        return (xp.toFloat() / need).coerceIn(0f, 1f)
+    }
+
+    /** Hashtag ID unik stabil dari Firebase UID (contoh: #A1B2C3D4). */
+    fun publicTag(): String {
+        val id = uid?.takeIf { it.isNotBlank() } ?: return "#GUEST"
+        var h = 0x811C9DC5u
+        for (c in id) {
+            h = h xor c.code.toUInt()
+            h *= 0x01000193u
+        }
+        return "#" + h.toString(16).uppercase().padStart(8, '0').takeLast(8)
+    }
+
     fun canWatchFree(now: Long = System.currentTimeMillis()): Boolean =
         effectivePremium(now) || keys > 0
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Kunci stylized: ring + shaft -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M12,2C9.24,2 7,4.24 7,7c0,2.05 1.23,3.81 3,4.58V14H8v2h2v2h2v-2h1.5c0.83,0 1.5,-0.67 1.5,-1.5V11.58c1.77,-0.77 3,-2.53 3,-4.58C18,4.24 15.76,2 12,2zM12,4c1.66,0 3,1.34 3,3s-1.34,3 -3,3 -3,-1.34 -3,-3 1.34,-3 3,-3z" />
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M11,16h2v3h-2z" />
+</vector>

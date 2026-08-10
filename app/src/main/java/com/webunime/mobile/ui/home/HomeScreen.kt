@@ -36,9 +36,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.HomeResponse
+import com.webunime.mobile.ui.components.HomeUserHeader
 import com.webunime.mobile.ui.components.HorizontalWibukuPosterRow
 import com.webunime.mobile.ui.components.SectionHeader
 import com.webunime.mobile.ui.components.WibukuPosterCard
@@ -50,10 +52,12 @@ fun HomeScreen(
     onOpenAnime: (slug: String) -> Unit,
     onOpenSearch: () -> Unit = {},
     onOpenSchedule: () -> Unit = {},
+    onOpenAccount: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
     val scope = rememberCoroutineScope()
+    val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
     var home by remember { mutableStateOf<HomeResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -113,6 +117,14 @@ fun HomeScreen(
                     .padding(contentPadding),
                 contentPadding = PaddingValues(bottom = 28.dp),
             ) {
+                item {
+                    HomeUserHeader(
+                        profile = profile,
+                        sessionName = app.session.displayName,
+                        onClick = onOpenAccount,
+                    )
+                }
+
                 item {
                     Row(
                         Modifier

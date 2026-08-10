@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 15,
-  "versionName": "0.2.4",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.4/Weeboonime-v0.2.4.apk",
-  "changelog": "Fix login Google: Web OAuth client ID yang benar."
+  "versionCode": 16,
+  "versionName": "0.2.5",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.2.5/Weeboonime-v0.2.5.apk",
+  "changelog": "Kartu profil di beranda: foto Google, hashtag ID, XP bar, icon kunci & gem."
 }

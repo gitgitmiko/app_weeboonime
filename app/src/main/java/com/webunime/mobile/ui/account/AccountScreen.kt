@@ -77,6 +77,7 @@ fun AccountScreen(contentPadding: PaddingValues = PaddingValues()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (p?.uid != null) {
                     Text(p.displayName ?: "Pengguna", style = MaterialTheme.typography.titleMedium)
+                    Text(p.publicTag(), color = MaterialTheme.colorScheme.primary)
                     Text(p.email.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Text("Belum login", style = MaterialTheme.typography.titleMedium)

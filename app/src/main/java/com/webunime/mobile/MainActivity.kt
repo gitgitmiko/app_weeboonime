@@ -320,6 +320,7 @@ class MainActivity : ComponentActivity() {
                                             onOpenAnime = { slug -> nav.navigate("detail/$slug") },
                                             onOpenSearch = { nav.navigate("search") },
                                             onOpenSchedule = { nav.navigate("schedule") },
+                                            onOpenAccount = { nav.navigate("account") },
                                         )
                                     }
                                     composable("schedule") {
