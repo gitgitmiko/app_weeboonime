@@ -2,6 +2,7 @@
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.widget.Toast
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
@@ -40,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Forward10
@@ -54,6 +56,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -78,6 +81,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -101,6 +105,12 @@ import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.EpisodeSummary
 import com.webunime.mobile.data.PlayerRouter
 import com.webunime.mobile.data.PlayerServer
+import com.webunime.mobile.data.user.EpisodeEngagement
+import com.webunime.mobile.data.user.EpisodeEngagementRepository
+import com.webunime.mobile.data.user.EpisodeVote
+import com.webunime.mobile.data.user.PlaybackReportDraft
+import com.webunime.mobile.data.user.PlaybackReportReason
+import com.webunime.mobile.data.user.PlaybackReportRepository
 import com.webunime.mobile.data.getEpisodeExtra
 import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WebunimeTheme
@@ -219,6 +229,29 @@ private fun PlayerScreen(
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val reportScope = rememberCoroutineScope()
+    var showReport by remember { mutableStateOf(false) }
+    var reportReason by remember { mutableStateOf(PlaybackReportReason.PLAYBACK_FAIL) }
+    var reportSending by remember { mutableStateOf(false) }
+    val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
+    val isPremium = profile?.effectivePremium() == true
+    val signedInUid = profile?.uid
+    val engagement by remember(slug, currentEpisode, signedInUid) {
+        app.episodeEngagement.statsFlow(slug, currentEpisode)
+    }.collectAsStateWithLifecycle(initialValue = EpisodeEngagement())
+
+    LaunchedEffect(slug, currentEpisode, signedInUid) {
+        if (signedInUid != null) {
+            app.episodeEngagement.recordView(slug, currentEpisode)
+        }
+    }
+
+    LaunchedEffect(showReport) {
+        if (showReport) {
+            reportReason = PlaybackReportRepository.suggestedReason(players.size, playbackError)
+        }
+    }
 
     val episodeNumbers = remember(episodes, currentEpisode) {
         val nums = episodes.mapNotNull { it.episode }.distinct().sorted()
@@ -228,7 +261,17 @@ private fun PlayerScreen(
     val prevEpisode = episodeNumbers.getOrNull(epIndex - 1)
     val nextEpisode = episodeNumbers.getOrNull(epIndex + 1)
 
-    val currentUrl = players.getOrNull(selectedServer)?.url.orEmpty()
+    val currentUrl = players.getOrNull(selectedServer)
+        ?.takeUnless { PlayerRouter.is1080(it) && !isPremium }
+        ?.url
+        .orEmpty()
+
+    LaunchedEffect(isPremium, players) {
+        val cur = players.getOrNull(selectedServer)
+        if (cur != null && PlayerRouter.is1080(cur) && !isPremium) {
+            selectedServer = PlayerRouter.defaultIndex(players, allow1080 = false)
+        }
+    }
 
     BackHandler {
         if (fullscreen) {
@@ -276,7 +319,7 @@ private fun PlayerScreen(
                     ?: payload.judul
                     ?: "Episode ${currentEpisode.toEpisodeLabel()}"
                 players = PlayerRouter.forPlayback(payload.episode?.players.orEmpty())
-                selectedServer = 0
+                selectedServer = PlayerRouter.defaultIndex(players, allow1080 = isPremium)
                 if (players.isEmpty()) {
                     error = "Tidak ada stream langsung (mp4). Coba episode lain."
                 }
@@ -658,7 +701,9 @@ private fun PlayerScreen(
                         }
                     }
 
-                    if (bottomSheet != BottomSheet.None) {
+                    if (bottomSheet == BottomSheet.Speed ||
+                        (bottomSheet == BottomSheet.Quality && fullscreen)
+                    ) {
                         Surface(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -668,47 +713,46 @@ private fun PlayerScreen(
                             shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                         ) {
                             Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    if (bottomSheet == BottomSheet.Speed) "Kecepatan" else "Resolusi",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                Spacer(Modifier.height(8.dp))
                                 when (bottomSheet) {
-                                    BottomSheet.Speed -> LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        items(SpeedOptions) { speed ->
-                                            FilterChip(
-                                                selected = playbackSpeed == speed,
-                                                onClick = {
-                                                    playbackSpeed = speed
-                                                    bottomSheet = BottomSheet.None
-                                                },
-                                                label = { Text(speedLabel(speed)) },
-                                                colors = chipColors(),
-                                            )
-                                        }
-                                    }
-                                    BottomSheet.Quality -> {
-                                        if (players.isEmpty()) {
-                                            Text("Tidak ada pilihan", color = Color.White)
-                                        } else {
-                                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                itemsIndexed(players) { index, server ->
-                                                    FilterChip(
-                                                        selected = index == selectedServer,
-                                                        onClick = {
-                                                            selectedServer = index
-                                                            bottomSheet = BottomSheet.None
-                                                        },
-                                                        label = { Text(PlayerRouter.qualityLabel(server)) },
-                                                        colors = chipColors(),
-                                                    )
-                                                }
+                                    BottomSheet.Speed -> {
+                                        Text(
+                                            "Kecepatan",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.titleSmall,
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        LazyRow(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            items(SpeedOptions) { speed ->
+                                                FilterChip(
+                                                    selected = playbackSpeed == speed,
+                                                    onClick = {
+                                                        playbackSpeed = speed
+                                                        bottomSheet = BottomSheet.None
+                                                    },
+                                                    label = { Text(speedLabel(speed)) },
+                                                    colors = chipColors(),
+                                                )
                                             }
                                         }
                                     }
+                                    BottomSheet.Quality -> QualityOptionsList(
+                                        players = players,
+                                        selectedIndex = selectedServer,
+                                        isPremium = isPremium,
+                                        onSelect = { index ->
+                                            selectedServer = index
+                                            bottomSheet = BottomSheet.None
+                                        },
+                                        onLocked1080 = {
+                                            Toast.makeText(
+                                                context,
+                                                "1080p hanya untuk user premium",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        },
+                                    )
                                     BottomSheet.None -> Unit
                                 }
                             }
@@ -720,8 +764,6 @@ private fun PlayerScreen(
 
         if (!fullscreen) {
             val unlocks by app.episodeUnlocks.unlocksFlow.collectAsStateWithLifecycle(initialValue = emptySet())
-            val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
-            val isPremium = profile?.effectivePremium() == true
             var synopsisExpanded by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
 
@@ -731,10 +773,47 @@ private fun PlayerScreen(
                     .weight(1f),
                 contentPadding = PaddingValues(bottom = 20.dp),
             ) {
+                if (bottomSheet == BottomSheet.Quality) {
+                    item {
+                        QualityOptionsList(
+                            players = players,
+                            selectedIndex = selectedServer,
+                            isPremium = isPremium,
+                            onSelect = { index ->
+                                selectedServer = index
+                                bottomSheet = BottomSheet.None
+                            },
+                            onLocked1080 = {
+                                Toast.makeText(
+                                    context,
+                                    "1080p hanya untuk user premium",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                        )
+                    }
+                }
                 item {
                     PlayerActionPills(
                         qualityLabel = players.getOrNull(selectedServer)
                             ?.let { PlayerRouter.qualityLabel(it) } ?: "Auto",
+                        likes = engagement.likes,
+                        dislikes = engagement.dislikes,
+                        myVote = engagement.myVote,
+                        onLike = {
+                            if (profile?.uid == null) {
+                                Toast.makeText(context, "Login dulu untuk like", Toast.LENGTH_SHORT).show()
+                            } else {
+                                scope.launch { app.episodeEngagement.toggleLike(slug, currentEpisode) }
+                            }
+                        },
+                        onDislike = {
+                            if (profile?.uid == null) {
+                                Toast.makeText(context, "Login dulu untuk dislike", Toast.LENGTH_SHORT).show()
+                            } else {
+                                scope.launch { app.episodeEngagement.toggleDislike(slug, currentEpisode) }
+                            }
+                        },
                         onQuality = {
                             bottomSheet = if (bottomSheet == BottomSheet.Quality) {
                                 BottomSheet.None
@@ -750,6 +829,14 @@ private fun PlayerScreen(
                         title = title,
                         cover = cover,
                         episode = currentEpisode,
+                        views = engagement.views,
+                        onReport = {
+                            if (profile?.uid == null) {
+                                Toast.makeText(context, "Login dulu untuk report", Toast.LENGTH_SHORT).show()
+                            } else {
+                                showReport = true
+                            }
+                        },
                     )
                 }
                 if (synopsis.isNotBlank()) {
@@ -871,6 +958,44 @@ private fun PlayerScreen(
             }
         }
     }
+
+    if (showReport) {
+        ReportPlaybackDialog(
+            title = title,
+            episode = currentEpisode,
+            reason = reportReason,
+            sending = reportSending,
+            onReason = { reportReason = it },
+            onDismiss = { if (!reportSending) showReport = false },
+            onSubmit = {
+                reportSending = true
+                reportScope.launch {
+                    val result = runCatching {
+                        app.playbackReports.submit(
+                            PlaybackReportDraft(
+                                slug = slug,
+                                title = title,
+                                episode = currentEpisode,
+                                reason = reportReason,
+                                playerCount = players.size,
+                                hasDirectMp4 = players.isNotEmpty(),
+                                playbackError = error ?: playbackError,
+                                selectedQuality = players.getOrNull(selectedServer)
+                                    ?.let { PlayerRouter.qualityLabel(it) },
+                            ),
+                        )
+                    }
+                    reportSending = false
+                    showReport = false
+                    Toast.makeText(
+                        context,
+                        result.getOrElse { it.message ?: "Gagal kirim laporan" },
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -895,8 +1020,156 @@ private fun TransportButton(
 }
 
 @Composable
+private fun QualityOptionsList(
+    players: List<PlayerServer>,
+    selectedIndex: Int,
+    isPremium: Boolean,
+    onSelect: (Int) -> Unit,
+    onLocked1080: () -> Unit,
+) {
+    val gold = Color(0xFFE8A53A)
+    val selectedGreen = Color(0xFF4CAF50)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            "Pilihan Kualitas Video",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+        )
+        Spacer(Modifier.height(14.dp))
+        if (players.isEmpty()) {
+            Text("Tidak ada pilihan kualitas", color = WuColors.Muted)
+        } else {
+        players.forEachIndexed { index, server ->
+            val ui = PlayerRouter.qualityUi(server)
+            val selected = index == selectedIndex
+            val locked = PlayerRouter.is1080(server) && !isPremium
+            val titleColor = when {
+                selected -> selectedGreen
+                ui.gold -> gold
+                else -> Color.White
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (locked) onLocked1080() else onSelect(index)
+                    }
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Box(
+                    Modifier
+                        .width(22.dp)
+                        .padding(top = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    } else if (locked) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = gold,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        ui.title,
+                        color = titleColor,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        ui.description,
+                        color = WuColors.Muted,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+        }
+    }
+}
+
+@Composable
+private fun ReportPlaybackDialog(
+    title: String,
+    episode: Double,
+    reason: PlaybackReportReason,
+    sending: Boolean,
+    onReason: (PlaybackReportReason) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Laporkan episode", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "$title · Episode ${episode.toEpisodeLabel()}",
+                    color = WuColors.Muted,
+                    fontSize = 13.sp,
+                )
+                PlaybackReportReason.entries.forEach { item ->
+                    val selected = item == reason
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) WuColors.AccentYellow.copy(alpha = 0.2f) else Color.Transparent)
+                            .clickable(enabled = !sending) { onReason(item) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            item.label,
+                            color = if (selected) WuColors.AccentYellow else Color.White,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSubmit, enabled = !sending) {
+                Text(if (sending) "Mengirim…" else "Kirim")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !sending) {
+                Text("Batal")
+            }
+        },
+        containerColor = WuColors.Surface,
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
+    )
+}
+
+@Composable
 private fun PlayerActionPills(
     qualityLabel: String,
+    likes: Int,
+    dislikes: Int,
+    myVote: EpisodeVote?,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
     onQuality: () -> Unit,
 ) {
     Row(
@@ -906,8 +1179,18 @@ private fun PlayerActionPills(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Pill(Icons.Default.ThumbUp, "Like")
-        Pill(Icons.Default.ThumbDown, "Dislike")
+        Pill(
+            Icons.Default.ThumbUp,
+            if (likes > 0) EpisodeEngagementRepository.formatCount(likes) else "Like",
+            selected = myVote == EpisodeVote.LIKE,
+            onClick = onLike,
+        )
+        Pill(
+            Icons.Default.ThumbDown,
+            if (dislikes > 0) EpisodeEngagementRepository.formatCount(dislikes) else "Dislike",
+            selected = myVote == EpisodeVote.DISLIKE,
+            onClick = onDislike,
+        )
         Pill(Icons.Default.PlayArrow, "$qualityLabel Quality", onClick = onQuality)
         Pill(Icons.Default.Download, "Download")
     }
@@ -917,21 +1200,24 @@ private fun PlayerActionPills(
 private fun Pill(
     icon: ImageVector,
     label: String,
+    selected: Boolean = false,
     onClick: () -> Unit = {},
 ) {
+    val bg = if (selected) WuColors.AccentYellow else WuColors.SurfaceAlt
+    val fg = if (selected) Color.Black else Color.White
     Row(
         Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(WuColors.SurfaceAlt)
+            .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(14.dp))
+        Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
         Text(
             label,
-            color = Color.White,
+            color = fg,
             fontSize = 11.sp,
             maxLines = 1,
             softWrap = false,
@@ -944,6 +1230,8 @@ private fun PlayerAnimeHeader(
     title: String,
     cover: String,
     episode: Double,
+    views: Int,
+    onReport: () -> Unit,
 ) {
     Row(
         Modifier
@@ -967,12 +1255,19 @@ private fun PlayerAnimeHeader(
                 Text("Episode ${episode.toEpisodeLabel()}", color = WuColors.Muted, fontSize = 12.sp)
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.Default.Visibility, null, tint = WuColors.Muted, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    EpisodeEngagementRepository.formatCount(views),
+                    color = WuColors.Muted,
+                    fontSize = 12.sp,
+                )
             }
         }
         Row(
             Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .background(WuColors.AccentYellow)
+                .clickable(onClick = onReport)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -32,14 +32,64 @@ object PlayerRouter {
         }
 
         return picked.entries
-            .sortedBy { it.key.rank }
+            .sortedByDescending { it.key.rank }
             .map { (q, server) ->
                 server.copy(label = q.label)
             }
     }
 
-    fun pickDefault(players: List<PlayerServer>): PlayerServer? =
-        forPlayback(players).firstOrNull()
+    fun pickDefault(players: List<PlayerServer>): PlayerServer? {
+        val list = forPlayback(players)
+        return list.getOrNull(defaultIndex(list, allow1080 = true))
+    }
+
+    /** Default 720p; fallback 480 → 360; 1080 hanya jika diizinkan / tidak ada opsi lain. */
+    fun defaultIndex(players: List<PlayerServer>, allow1080: Boolean): Int {
+        if (players.isEmpty()) return 0
+        fun idx(q: Quality) = players.indexOfFirst { qualityOf(it) == q }
+        idx(Quality.Q720).takeIf { it >= 0 }?.let { return it }
+        idx(Quality.Q480).takeIf { it >= 0 }?.let { return it }
+        idx(Quality.Q320).takeIf { it >= 0 }?.let { return it }
+        if (allow1080) idx(Quality.Q1080).takeIf { it >= 0 }?.let { return it }
+        val non1080 = players.indices.firstOrNull { qualityOf(players[it]) != Quality.Q1080 }
+        return non1080 ?: if (allow1080) 0 else -1
+    }
+
+    fun is1080(p: PlayerServer): Boolean = qualityOf(p) == Quality.Q1080
+
+    data class QualityUi(
+        val title: String,
+        val description: String,
+        val gold: Boolean,
+    )
+
+    fun qualityUi(p: PlayerServer): QualityUi = when (qualityOf(p)) {
+        Quality.Q320 -> QualityUi(
+            title = "360P (Hemat)",
+            description = "Kualitas rendah, streaming cepat dan hemat kuota.",
+            gold = false,
+        )
+        Quality.Q480 -> QualityUi(
+            title = "480P (Standar)",
+            description = "Kualitas sedang, streaming cukup cepat.",
+            gold = false,
+        )
+        Quality.Q720 -> QualityUi(
+            title = "720P (Bagus)",
+            description = "Kualitas bagus, butuh koneksi internet yang cukup stabil.",
+            gold = true,
+        )
+        Quality.Q1080 -> QualityUi(
+            title = "1080P (Premium)",
+            description = "Fitur premium. Kualitas tertinggi untuk pengalaman menonton terbaik di HP. Membutuhkan internet cepat.",
+            gold = true,
+        )
+        null -> QualityUi(
+            title = qualityLabel(p),
+            description = "Kualitas sesuai sumber stream.",
+            gold = false,
+        )
+    }
 
     fun qualityLabel(p: PlayerServer): String =
         qualityOf(p)?.label

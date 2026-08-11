@@ -1,15 +1,203 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function engPath(docId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/episodeEngagement/$(docId);
+    }
+
+    function intField(data, field) {
+      return field in data && data[field] is int ? data[field] : 0;
+    }
+
+    function statsOld(field) {
+      return resource == null ? 0 : intField(resource.data, field);
+    }
+
+    function statsNew(field) {
+      return intField(request.resource.data, field);
+    }
+
+    function wasLike(docId) {
+      return exists(engPath(docId))
+        && 'vote' in get(engPath(docId)).data
+        && get(engPath(docId)).data.vote == 'like';
+    }
+
+    function nowLike(docId) {
+      return existsAfter(engPath(docId))
+        && 'vote' in getAfter(engPath(docId)).data
+        && getAfter(engPath(docId)).data.vote == 'like';
+    }
+
+    function wasDislike(docId) {
+      return exists(engPath(docId))
+        && 'vote' in get(engPath(docId)).data
+        && get(engPath(docId)).data.vote == 'dislike';
+    }
+
+    function nowDislike(docId) {
+      return existsAfter(engPath(docId))
+        && 'vote' in getAfter(engPath(docId)).data
+        && getAfter(engPath(docId)).data.vote == 'dislike';
+    }
+
+    function wasViewed(docId) {
+      return exists(engPath(docId))
+        && 'viewed' in get(engPath(docId)).data
+        && get(engPath(docId)).data.viewed == true;
+    }
+
+    function nowViewed(docId) {
+      return existsAfter(engPath(docId))
+        && 'viewed' in getAfter(engPath(docId)).data
+        && getAfter(engPath(docId)).data.viewed == true;
+    }
+
+    function likeExpected(docId) {
+      return (nowLike(docId) && !wasLike(docId) ? 1 : 0)
+        + (wasLike(docId) && !nowLike(docId) ? -1 : 0);
+    }
+
+    function dislikeExpected(docId) {
+      return (nowDislike(docId) && !wasDislike(docId) ? 1 : 0)
+        + (wasDislike(docId) && !nowDislike(docId) ? -1 : 0);
+    }
+
+    function viewExpected(docId) {
+      return nowViewed(docId) && !wasViewed(docId) ? 1 : 0;
+    }
+
+    function statsDeltaOk(docId) {
+      return statsNew('likes') == statsOld('likes') + likeExpected(docId)
+        && statsNew('dislikes') == statsOld('dislikes') + dislikeExpected(docId)
+        && statsNew('views') == statsOld('views') + viewExpected(docId)
+        && statsNew('likes') >= 0
+        && statsNew('dislikes') >= 0
+        && statsNew('views') >= 0;
+    }
+
+    function statsShapeOk() {
+      return request.resource.data.keys().hasOnly(['slug', 'episode', 'likes', 'dislikes', 'views'])
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() > 0
+        && request.resource.data.slug.size() < 200
+        && request.resource.data.episode is number
+        && request.resource.data.episode > 0
+        && (!('likes' in request.resource.data) || request.resource.data.likes is int)
+        && (!('dislikes' in request.resource.data) || request.resource.data.dislikes is int)
+        && (!('views' in request.resource.data) || request.resource.data.views is int)
+        && (resource == null || (
+          request.resource.data.slug == resource.data.slug
+          && request.resource.data.episode == resource.data.episode
+        ));
+    }
+
+    function statsMatchesEngagement(docId) {
+      return existsAfter(engPath(docId))
+        && getAfter(engPath(docId)).data.slug == request.resource.data.slug
+        && getAfter(engPath(docId)).data.episode == request.resource.data.episode;
+    }
+
+    function engagementShapeOk() {
+      return request.resource.data.keys().hasOnly([
+        'slug', 'episode', 'vote', 'viewed', 'viewedAt', 'votedAt'
+      ])
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() > 0
+        && request.resource.data.slug.size() < 200
+        && request.resource.data.episode is number
+        && request.resource.data.episode > 0
+        && (!('vote' in request.resource.data) || request.resource.data.vote in ['like', 'dislike', ''])
+        && (!('viewed' in request.resource.data) || request.resource.data.viewed is bool)
+        && (!('viewedAt' in request.resource.data) || request.resource.data.viewedAt is timestamp)
+        && (!('votedAt' in request.resource.data) || request.resource.data.votedAt is timestamp);
+    }
+
+    function viewedLocked() {
+      return resource == null
+        || !('viewed' in resource.data)
+        || resource.data.viewed != true
+        || request.resource.data.viewed == true;
+    }
+
+    function engagementIdentityLocked() {
+      return resource == null
+        || (
+          request.resource.data.slug == resource.data.slug
+          && request.resource.data.episode == resource.data.episode
+        );
+    }
+
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner(uid);
 
       match /unlocks/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
+      }
+
+      // Suara & view unik per UID. viewed tidak bisa di-reset; dokumen tidak bisa dihapus.
+      match /episodeEngagement/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && engagementShapeOk()
+          && viewedLocked()
+          && engagementIdentityLocked();
+        allow delete: if false;
       }
     }
 
-    // Hanya Admin SDK (Cloud Functions) — client tidak boleh baca/tulis
+    // Total publik: hanya boleh ±1, dan harus cocok dengan perubahan episodeEngagement
+    // di request/transaksi yang sama (getAfter). Tidak bisa set angka bebas.
+    match /episodeStats/{docId} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && statsShapeOk()
+        && statsMatchesEngagement(docId)
+        && statsDeltaOk(docId);
+      allow delete: if false;
+    }
+
+    // Laporan player: 1 dokumen per UID+episode, ulang setelah 6 jam
+    match /playbackReports/{docId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() > 0
+        && request.resource.data.slug.size() < 200
+        && request.resource.data.episode is number
+        && request.resource.data.episode > 0
+        && request.resource.data.reason in ['no_mp4', 'playback_fail', 'wrong_episode', 'other']
+        && request.resource.data.title is string
+        && request.resource.data.title.size() < 200
+        && request.resource.data.playerCount is int
+        && request.resource.data.playerCount >= 0
+        && request.resource.data.playerCount <= 50
+        && request.resource.data.hasDirectMp4 is bool
+        && request.resource.data.playbackError is string
+        && request.resource.data.playbackError.size() < 300
+        && request.resource.data.selectedQuality is string
+        && request.resource.data.selectedQuality.size() < 50
+        && request.resource.data.appVersion is string
+        && request.resource.data.appVersion.size() < 20;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.episode == resource.data.episode
+        && request.time >= resource.data.reportedAt + duration.value(6, 'h');
+      allow delete: if false;
+    }
+
     match /meta/{docId} {
       allow read, write: if false;
     }

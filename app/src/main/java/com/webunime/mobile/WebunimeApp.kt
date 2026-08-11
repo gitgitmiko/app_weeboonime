@@ -10,7 +10,9 @@ import com.webunime.mobile.data.billing.BillingRepository
 import com.webunime.mobile.data.fcm.EpisodeNotify
 import com.webunime.mobile.data.fcm.FcmTopicManager
 import com.webunime.mobile.data.player.NowPlayingController
+import com.webunime.mobile.data.user.EpisodeEngagementRepository
 import com.webunime.mobile.data.user.EpisodeUnlockStore
+import com.webunime.mobile.data.user.PlaybackReportRepository
 import com.webunime.mobile.data.user.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,10 @@ class WebunimeApp : Application() {
         private set
     lateinit var episodeUnlocks: EpisodeUnlockStore
         private set
+    lateinit var episodeEngagement: EpisodeEngagementRepository
+        private set
+    lateinit var playbackReports: PlaybackReportRepository
+        private set
     lateinit var nowPlaying: NowPlayingController
         private set
     lateinit var authRepository: AuthRepository
@@ -46,6 +52,8 @@ class WebunimeApp : Application() {
         session = SessionStore(this)
         userRepository = UserRepository(this)
         episodeUnlocks = EpisodeUnlockStore(this)
+        episodeEngagement = EpisodeEngagementRepository()
+        playbackReports = PlaybackReportRepository()
         nowPlaying = NowPlayingController()
         authRepository = AuthRepository()
         rewardedAds = RewardedAdManager(this)
