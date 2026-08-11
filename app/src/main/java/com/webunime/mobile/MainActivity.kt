@@ -50,7 +50,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -362,7 +364,15 @@ class MainActivity : ComponentActivity() {
                                                                 Icon(tab.icon, contentDescription = tab.label)
                                                             }
                                                         },
-                                                        label = { Text(tab.label) },
+                                                        label = {
+                                                            Text(
+                                                                tab.label,
+                                                                maxLines = 1,
+                                                                softWrap = false,
+                                                                overflow = TextOverflow.Clip,
+                                                                fontSize = 10.sp,
+                                                            )
+                                                        },
                                                         alwaysShowLabel = false,
                                                         colors = NavigationBarItemDefaults.colors(
                                                             selectedIconColor = Color.White,

@@ -15,6 +15,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -900,6 +902,7 @@ private fun PlayerActionPills(
     Row(
         Modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -926,7 +929,13 @@ private fun Pill(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(14.dp))
-        Text(label, color = Color.White, fontSize = 11.sp)
+        Text(
+            label,
+            color = Color.White,
+            fontSize = 11.sp,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
