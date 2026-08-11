@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 25,
-  "versionName": "0.3.4",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.4/Weeboonime-v0.3.4.apk",
-  "changelog": "Default 720p (1080p premium), like/dislike/view per akun Google, tombol Report mengantri refresh episode malam ini."
+  "versionCode": 26,
+  "versionName": "0.3.5",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.5/Weeboonime-v0.3.5.apk",
+  "changelog": "Beranda Top Anime + Hot Anime, tombol Premium di halaman nonton membuka paket."
 }

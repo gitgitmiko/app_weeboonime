@@ -11,6 +11,7 @@ data class HomeResponse(
     val scheduleToday: ScheduleDay? = null,
     val genres: List<String> = emptyList(),
     val newUpdate: List<AnimeCard> = emptyList(),
+    val top: List<AnimeCard> = emptyList(),
     val hot: List<AnimeCard> = emptyList(),
     val completed: List<AnimeCard> = emptyList(),
     val selectedGenre: String? = null,

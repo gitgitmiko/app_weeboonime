@@ -113,6 +113,7 @@ import com.webunime.mobile.data.user.PlaybackReportReason
 import com.webunime.mobile.data.user.PlaybackReportRepository
 import com.webunime.mobile.data.getEpisodeExtra
 import com.webunime.mobile.data.toEpisodeLabel
+import com.webunime.mobile.ui.premium.PremiumPackageScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
 import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.delay
@@ -232,6 +233,7 @@ private fun PlayerScreen(
     val context = LocalContext.current
     val reportScope = rememberCoroutineScope()
     var showReport by remember { mutableStateOf(false) }
+    var showPremium by remember { mutableStateOf(false) }
     var reportReason by remember { mutableStateOf(PlaybackReportReason.PLAYBACK_FAIL) }
     var reportSending by remember { mutableStateOf(false) }
     val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -274,7 +276,9 @@ private fun PlayerScreen(
     }
 
     BackHandler {
-        if (fullscreen) {
+        if (showPremium) {
+            showPremium = false
+        } else if (fullscreen) {
             fullscreen = false
             onFullscreenChange(false)
         } else {
@@ -403,6 +407,7 @@ private fun PlayerScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -863,7 +868,7 @@ private fun PlayerScreen(
                 }
                 item {
                     Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        com.webunime.mobile.ui.detail.PremiumBanner(onClick = { /* account via reopen */ })
+                        com.webunime.mobile.ui.detail.PremiumBanner(onClick = { showPremium = true })
                     }
                 }
                 item {
@@ -995,6 +1000,11 @@ private fun PlayerScreen(
                 }
             },
         )
+    }
+
+    if (showPremium) {
+        PremiumPackageScreen(onBack = { showPremium = false })
+    }
     }
 }
 

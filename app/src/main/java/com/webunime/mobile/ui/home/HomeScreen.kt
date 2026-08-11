@@ -271,15 +271,35 @@ fun HomeScreen(
                     }
                 }
 
-                if (data.hot.isNotEmpty()) {
-                    item { SectionHeader(title = "Hot Anime") }
+                val topItems = data.top.ifEmpty { data.hot }
+                val hotItems = if (data.top.isNotEmpty()) data.hot else emptyList()
+
+                if (topItems.isNotEmpty()) {
+                    item { SectionHeader(title = "Top Anime") }
                     item {
                         HorizontalWibukuPosterRow(
-                            items = data.hot,
+                            items = topItems,
                             titleOf = { it.displayTitle() },
                             thumbOf = { it.thumbnail },
                             ratingOf = { it.rating },
                             episodeOf = { it.episodes_count?.let { n -> "Eps $n" } },
+                            onClick = { it.slug?.let(onOpenAnime) },
+                        )
+                    }
+                }
+
+                if (hotItems.isNotEmpty()) {
+                    item { SectionHeader(title = "Hot Anime") }
+                    item {
+                        HorizontalWibukuPosterRow(
+                            items = hotItems,
+                            titleOf = { it.displayTitle() },
+                            thumbOf = { it.thumbnail },
+                            ratingOf = { it.rating },
+                            episodeOf = {
+                                it.episode?.let { n -> "Eps ${n.toEpisodeLabel()}" }
+                                    ?: it.episodes_count?.let { n -> "Eps $n" }
+                            },
                             onClick = { it.slug?.let(onOpenAnime) },
                         )
                     }
