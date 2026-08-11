@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.webunime.mobile.data.toEpisodeKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -35,12 +36,12 @@ class EpisodeUnlockStore(private val context: Context) {
         }
     }
 
-    suspend fun isUnlocked(slug: String, episode: Int): Boolean {
+    suspend fun isUnlocked(slug: String, episode: Double): Boolean {
         val key = key(slug, episode)
         return (context.unlockStore.data.first()[kUnlocks] ?: emptySet()).contains(key)
     }
 
-    suspend fun markUnlocked(slug: String, episode: Int) {
+    suspend fun markUnlocked(slug: String, episode: Double) {
         val key = key(slug, episode)
         context.unlockStore.edit { prefs ->
             val cur = prefs[kUnlocks]?.toMutableSet() ?: mutableSetOf()
@@ -50,6 +51,7 @@ class EpisodeUnlockStore(private val context: Context) {
     }
 
     companion object {
-        fun key(slug: String, episode: Int) = "$slug#$episode"
+        fun key(slug: String, episode: Double) =
+            "$slug#${episode.toEpisodeKey()}"
     }
 }

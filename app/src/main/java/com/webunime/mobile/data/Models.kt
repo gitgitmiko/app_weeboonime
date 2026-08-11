@@ -22,7 +22,7 @@ data class LatestItem(
     val slug: String? = null,
     val judul: String? = null,
     val nama: String? = null,
-    val episode: Int? = null,
+    val episode: Double? = null,
     val thumbnail: String? = null,
     val released_at: String? = null,
     val released_on: String? = null,
@@ -42,7 +42,7 @@ data class AnimeCard(
     val status: String? = null,
     val genre: List<String>? = null,
     val episodes_count: Int? = null,
-    val episode: Int? = null,
+    val episode: Double? = null,
 ) {
     fun displayTitle(): String = judul ?: nama ?: slug ?: "Tanpa judul"
 }
@@ -87,7 +87,7 @@ data class ScheduleItem(
     val genre: List<String>? = null,
     val time: String? = null,
     val source: String? = null,
-    val latest_episode: Int? = null,
+    val latest_episode: Double? = null,
     val latest_released_at: String? = null,
 ) {
     fun displayTitle(): String = judul ?: nama ?: slug ?: "Tanpa judul"
@@ -112,7 +112,7 @@ data class AnimeDetail(
 
 @JsonClass(generateAdapter = false)
 data class EpisodeSummary(
-    val episode: Int? = null,
+    val episode: Double? = null,
     val title: String? = null,
     val slug: String? = null,
     val source: String? = null,
@@ -130,7 +130,7 @@ data class EpisodePlayback(
 
 @JsonClass(generateAdapter = false)
 data class EpisodePayload(
-    val episode: Int? = null,
+    val episode: Double? = null,
     val title: String? = null,
     val slug: String? = null,
     val source: String? = null,

@@ -51,6 +51,7 @@ import coil.compose.AsyncImage
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.CalendarResponse
 import com.webunime.mobile.data.ScheduleItem
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -248,7 +249,7 @@ private enum class AirKind { AIRED, UPCOMING, LATE }
 
 private data class AirStatus(
     val kind: AirKind,
-    val episode: Int,
+    val episode: Double,
     val label: String,
 )
 
@@ -314,7 +315,7 @@ private fun ScheduleRow(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                "Eps ${status.episode}",
+                "Eps ${status.episode.toEpisodeLabel()}",
                 color = WuColors.Muted,
                 fontSize = 12.sp,
             )
@@ -375,7 +376,7 @@ private fun weekDaysJakarta(count: Int): List<WeekDayInfo> {
 private fun resolveAirStatus(item: ScheduleItem, dayDate: LocalDate?): AirStatus {
     val zone = ZoneId.of("Asia/Jakarta")
     val now = ZonedDateTime.now(zone)
-    val latest = item.latest_episode?.takeIf { it > 0 } ?: 0
+    val latest = item.latest_episode?.takeIf { it > 0 } ?: 0.0
     val nextEp = latest + 1
     val date = dayDate ?: now.toLocalDate()
     val airAt = parseAirAt(date, item.time, zone)

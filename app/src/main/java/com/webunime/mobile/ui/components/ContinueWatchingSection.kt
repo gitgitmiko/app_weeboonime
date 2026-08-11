@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.webunime.mobile.data.WatchHistoryItem
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WuColors
 
 @Composable
@@ -83,7 +84,7 @@ private fun ContinueWatchCard(
                 modifier = Modifier.fillMaxSize(),
             )
             Text(
-                text = item.episode?.let { "Eps $it" } ?: "Eps",
+                text = item.episode?.let { "Eps ${it.toEpisodeLabel()}" } ?: "Eps",
                 color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,

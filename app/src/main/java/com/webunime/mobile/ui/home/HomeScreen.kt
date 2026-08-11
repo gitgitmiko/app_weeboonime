@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.HomeResponse
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.components.ContinueWatchingSection
 import com.webunime.mobile.ui.components.HomePremiumPromo
 import com.webunime.mobile.ui.components.HomeUserHeader
@@ -72,8 +73,13 @@ fun HomeScreen(
     var loading by remember { mutableStateOf(true) }
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var newExpanded by remember { mutableStateOf(false) }
+    val historyRev by app.watchHistory.revision.collectAsStateWithLifecycle()
     var continueItems by remember { mutableStateOf(app.watchHistory.continueWatching()) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(historyRev) {
+        continueItems = app.watchHistory.continueWatching()
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -195,7 +201,7 @@ fun HomeScreen(
                             WibukuPosterCard(
                                 title = item.displayTitle(),
                                 thumbnail = item.thumbnail,
-                                episodeLabel = item.episode?.let { "Eps $it" }
+                                episodeLabel = item.episode?.let { "Eps ${it.toEpisodeLabel()}" }
                                     ?: item.episodes_count?.let { "Eps $it" },
                                 rating = item.rating,
                                 showNew = true,

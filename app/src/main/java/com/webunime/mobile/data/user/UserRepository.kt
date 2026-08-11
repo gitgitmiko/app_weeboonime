@@ -12,6 +12,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.webunime.mobile.BuildConfig
+import com.webunime.mobile.data.toEpisodeKey
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -156,7 +157,7 @@ class UserRepository(private val context: Context) {
         return subscribed
     }
 
-    suspend fun consumeKeyForEpisode(slug: String, episode: Int): Result<UserProfile> {
+    suspend fun consumeKeyForEpisode(slug: String, episode: Double): Result<UserProfile> {
         val now = System.currentTimeMillis()
         val before = current()
         if (before.effectivePremium(now)) {
@@ -174,7 +175,7 @@ class UserRepository(private val context: Context) {
             runCatching {
                 firestore.collection("users").document(uid)
                     .collection("unlocks")
-                    .document("$slug#$episode")
+                    .document("$slug#${episode.toEpisodeKey()}")
                     .set(
                         mapOf(
                             "slug" to slug,

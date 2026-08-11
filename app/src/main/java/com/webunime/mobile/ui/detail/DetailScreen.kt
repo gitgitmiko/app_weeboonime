@@ -65,6 +65,8 @@ import com.webunime.mobile.R
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeDetail
 import com.webunime.mobile.data.EpisodeSummary
+import com.webunime.mobile.data.putEpisodeExtra
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.data.user.EpisodeUnlockStore
 import com.webunime.mobile.ui.player.PlayerActivity
 import com.webunime.mobile.ui.theme.WuColors
@@ -85,7 +87,7 @@ fun DetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var showKeysEmpty by remember { mutableStateOf(false) }
-    var pendingEpisode by remember { mutableStateOf<Int?>(null) }
+    var pendingEpisode by remember { mutableStateOf<Double?>(null) }
     var synopsisExpanded by remember { mutableStateOf(false) }
     var sortDesc by remember { mutableStateOf(true) }
     var xpPopup by remember { mutableStateOf<XpGainInfo?>(null) }
@@ -94,7 +96,7 @@ fun DetailScreen(
     val isPremium = profile?.effectivePremium() == true
     val subscribed = profile?.animeSubs?.contains(slug) == true
 
-    fun openPlayer(n: Int, title: String, thumbnail: String) {
+    fun openPlayer(n: Double, title: String, thumbnail: String) {
         app.nowPlaying.clear()
         app.watchHistory.record(
             slug = slug,
@@ -104,14 +106,14 @@ fun DetailScreen(
         )
         val i = Intent(context, PlayerActivity::class.java).apply {
             putExtra(PlayerActivity.EXTRA_SLUG, slug)
-            putExtra(PlayerActivity.EXTRA_EPISODE, n)
+            putEpisodeExtra(PlayerActivity.EXTRA_EPISODE, n)
             putExtra(PlayerActivity.EXTRA_TITLE, title)
             putExtra(PlayerActivity.EXTRA_THUMBNAIL, thumbnail)
         }
         context.startActivity(i)
     }
 
-    fun tryWatch(n: Int, title: String, thumbnail: String) {
+    fun tryWatch(n: Double, title: String, thumbnail: String) {
         scope.launch {
             val unlocked = isPremium ||
                 unlocks.contains(EpisodeUnlockStore.key(slug, n)) ||
@@ -174,11 +176,11 @@ fun DetailScreen(
             else -> {
                 val data = detail ?: return
                 val episodes = if (sortDesc) {
-                    data.episodes.sortedByDescending { it.episode ?: 0 }
+                    data.episodes.sortedByDescending { it.episode ?: 0.0 }
                 } else {
-                    data.episodes.sortedBy { it.episode ?: 0 }
+                    data.episodes.sortedBy { it.episode ?: 0.0 }
                 }
-                val firstEp = data.episodes.minByOrNull { it.episode ?: Int.MAX_VALUE }?.episode
+                val firstEp = data.episodes.minByOrNull { it.episode ?: Double.MAX_VALUE }?.episode
                     ?: episodes.firstOrNull()?.episode
 
                 LazyColumn(
@@ -584,7 +586,7 @@ private fun EpisodeRow(
                 .clickable(enabled = unlocked, onClick = onOpen)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            Text("Episode $n", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text("Episode ${n.toEpisodeLabel()}", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Visibility, null, tint = WuColors.Muted, modifier = Modifier.size(14.dp))

@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.AnimeCard
 import com.webunime.mobile.data.LatestItem
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.components.WibukuPosterCard
 import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.async
@@ -204,7 +205,7 @@ fun SubscribedScreen(
                                 WibukuPosterCard(
                                     title = card.displayTitle(),
                                     thumbnail = card.thumbnail,
-                                    episodeLabel = card.episode?.let { "Eps $it" }
+                                    episodeLabel = card.episode?.let { "Eps ${it.toEpisodeLabel()}" }
                                         ?: card.episodes_count?.let { "Eps $it" },
                                     rating = card.rating,
                                     showNew = latestBySlug.containsKey(card.slug.orEmpty()),

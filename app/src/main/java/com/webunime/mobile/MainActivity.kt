@@ -60,6 +60,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.webunime.mobile.data.fcm.EpisodeNotify
+import com.webunime.mobile.data.putEpisodeExtra
 import com.webunime.mobile.ui.account.AccountScreen
 import com.webunime.mobile.ui.auth.AuthOnboardingFlow
 import com.webunime.mobile.ui.auth.LegalDoc
@@ -174,6 +175,7 @@ class MainActivity : ComponentActivity() {
                                     runCatching {
                                         app.userRepository.bindToAccount(uid)
                                         app.episodeUnlocks.bindToAccount(uid)
+                                        app.watchHistory.bindToAccount(uid)
                                         val subs = app.userRepository.current().animeSubs
                                         com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(
                                             subs,
@@ -313,7 +315,7 @@ class MainActivity : ComponentActivity() {
                                                     app.nowPlaying.clear()
                                                     val i = Intent(activity, PlayerActivity::class.java).apply {
                                                         putExtra(PlayerActivity.EXTRA_SLUG, playing.slug)
-                                                        putExtra(PlayerActivity.EXTRA_EPISODE, playing.episode)
+                                                        putEpisodeExtra(PlayerActivity.EXTRA_EPISODE, playing.episode)
                                                         putExtra(PlayerActivity.EXTRA_TITLE, playing.title)
                                                         putExtra(PlayerActivity.EXTRA_THUMBNAIL, playing.thumbnail)
                                                     }
@@ -400,9 +402,9 @@ class MainActivity : ComponentActivity() {
                                             onContinueWatch = { item ->
                                                 val i = Intent(activity, PlayerActivity::class.java).apply {
                                                     putExtra(PlayerActivity.EXTRA_SLUG, item.slug)
-                                                    putExtra(
+                                                    putEpisodeExtra(
                                                         PlayerActivity.EXTRA_EPISODE,
-                                                        item.episode ?: 1,
+                                                        item.episode ?: 1.0,
                                                     )
                                                     putExtra(PlayerActivity.EXTRA_TITLE, item.title)
                                                     putExtra(
@@ -425,9 +427,9 @@ class MainActivity : ComponentActivity() {
                                             onContinue = { item ->
                                                 val i = Intent(activity, PlayerActivity::class.java).apply {
                                                     putExtra(PlayerActivity.EXTRA_SLUG, item.slug)
-                                                    putExtra(
+                                                    putEpisodeExtra(
                                                         PlayerActivity.EXTRA_EPISODE,
-                                                        item.episode ?: 1,
+                                                        item.episode ?: 1.0,
                                                     )
                                                     putExtra(PlayerActivity.EXTRA_TITLE, item.title)
                                                     putExtra(

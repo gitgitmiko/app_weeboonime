@@ -8,7 +8,7 @@ data class NowPlaying(
     val slug: String,
     val title: String,
     val thumbnail: String,
-    val episode: Int,
+    val episode: Double,
 )
 
 /** Mini-player session (metadata). Tap bar → buka ulang PlayerActivity. */

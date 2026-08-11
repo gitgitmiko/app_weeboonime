@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,9 +45,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.WatchHistoryItem
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WuColors
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -61,10 +64,15 @@ fun HistoryScreen(
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val app = LocalContext.current.applicationContext as WebunimeApp
+    val historyRev by app.watchHistory.revision.collectAsStateWithLifecycle()
     var items by remember { mutableStateOf(app.watchHistory.list()) }
+
+    LaunchedEffect(historyRev) {
+        items = app.watchHistory.list()
+    }
     var multi by remember { mutableStateOf(false) }
     var selecting by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf<Set<Pair<String, Int?>>>(emptySet()) }
+    var selected by remember { mutableStateOf<Set<Pair<String, Double?>>>(emptySet()) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
@@ -310,7 +318,7 @@ private fun SingleHistoryCard(
                 Text(time, color = WuColors.Muted, fontSize = 12.sp)
             }
             Text(
-                item.episode?.let { "Episode $it" } ?: "Episode",
+                item.episode?.let { "Episode ${it.toEpisodeLabel()}" } ?: "Episode",
                 color = WuColors.Muted,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 2.dp),
@@ -437,7 +445,7 @@ private fun MultiEpisodeRow(
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 )
                 Text(
-                    item.episode?.let { "Episode $it" } ?: "Episode",
+                    item.episode?.let { "Episode ${it.toEpisodeLabel()}" } ?: "Episode",
                     color = WuColors.Muted,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),

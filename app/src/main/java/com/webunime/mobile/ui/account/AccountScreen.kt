@@ -60,6 +60,7 @@ fun AccountScreen(
                 val uid = app.authRepository.currentUser?.uid
                 app.userRepository.bindToAccount(uid)
                 app.episodeUnlocks.bindToAccount(uid)
+                app.watchHistory.bindToAccount(uid)
                 val subs = app.userRepository.current().animeSubs
                 com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(subs, emptyList())
                 message = "Login berhasil"
@@ -116,6 +117,7 @@ fun AccountScreen(
                         app.authRepository.signOut(activity)
                         app.userRepository.bindToAccount(null)
                         app.episodeUnlocks.bindToAccount(null)
+                        app.watchHistory.bindToAccount(null)
                         app.session.logout()
                         app.nowPlaying.clear()
                         onLogout()

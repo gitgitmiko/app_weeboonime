@@ -65,6 +65,7 @@ class WebunimeApp : Application() {
             runCatching {
                 userRepository.bindToAccount(uid)
                 episodeUnlocks.bindToAccount(uid)
+                watchHistory.bindToAccount(uid)
                 if (uid != null) {
                     val subs = userRepository.current().animeSubs
                     FcmTopicManager.syncTopics(subs, emptyList())

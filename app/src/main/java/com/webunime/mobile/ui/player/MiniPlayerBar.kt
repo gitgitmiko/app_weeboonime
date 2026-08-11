@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.webunime.mobile.data.player.NowPlaying
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WuColors
 
 @Composable
@@ -72,7 +73,7 @@ fun MiniPlayerBar(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "Episode ${playing.episode}",
+                "Episode ${playing.episode.toEpisodeLabel()}",
                 color = WuColors.Muted,
                 fontSize = 12.sp,
             )

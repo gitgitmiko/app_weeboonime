@@ -45,8 +45,8 @@ class CatalogApi(baseUrl: String) {
     suspend fun anime(slug: String): AnimeDetail =
         get("/v1/anime/${enc(slug)}", detailAdapter)
 
-    suspend fun episode(slug: String, n: Int): EpisodePlayback =
-        get("/v1/anime/${enc(slug)}/episodes/$n", episodeAdapter)
+    suspend fun episode(slug: String, n: Double): EpisodePlayback =
+        get("/v1/anime/${enc(slug)}/episodes/${n.toEpisodeLabel()}", episodeAdapter)
 
     private fun enc(s: String): String =
         java.net.URLEncoder.encode(s, Charsets.UTF_8.name()).replace("+", "%20")

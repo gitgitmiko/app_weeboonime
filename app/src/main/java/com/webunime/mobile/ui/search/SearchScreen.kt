@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -84,7 +87,7 @@ fun SearchScreen(
                 .padding(16.dp),
             singleLine = true,
             label = { Text("Cari anime") },
-            placeholder = { Text("Judul / slugâ€¦") },
+            placeholder = { Text("Judul") },
         )
         when {
             loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -122,8 +125,20 @@ fun SearchScreen(
                         )
                         Column {
                             Text(item.displayTitle(), style = MaterialTheme.typography.titleSmall)
-                            item.rating?.let {
-                                Text("â˜… $it", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            item.rating?.takeIf { it.isNotBlank() }?.let { rating ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.Star,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        " $rating",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                             }
                         }
                     }

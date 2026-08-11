@@ -1,6 +1,6 @@
 ﻿{
-  "versionCode": 22,
-  "versionName": "0.3.1",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.1/Weeboonime-v0.3.1.apk",
-  "changelog": "Fix tanggal Jadwal (Senin–Minggu Jakarta) + status Belum/Terlambat/Sudah Tayang. Terakhir Ditonton di beranda, History diperbarui, player fullscreen immersive."
+  "versionCode": 23,
+  "versionName": "0.3.2",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.2/Weeboonime-v0.3.2.apk",
+  "changelog": "Riwayat menonton per akun Google. Fix episode desimal (12.1/12.2). Search: placeholder Judul + rating tidak rusak."
 }

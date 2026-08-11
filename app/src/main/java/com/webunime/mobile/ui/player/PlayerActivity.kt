@@ -99,6 +99,8 @@ import com.webunime.mobile.WebunimeApp
 import com.webunime.mobile.data.EpisodeSummary
 import com.webunime.mobile.data.PlayerRouter
 import com.webunime.mobile.data.PlayerServer
+import com.webunime.mobile.data.getEpisodeExtra
+import com.webunime.mobile.data.toEpisodeLabel
 import com.webunime.mobile.ui.theme.WebunimeTheme
 import com.webunime.mobile.ui.theme.WuColors
 import kotlinx.coroutines.delay
@@ -114,7 +116,7 @@ class PlayerActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         val slug = intent.getStringExtra(EXTRA_SLUG).orEmpty()
-        val startEpisode = intent.getIntExtra(EXTRA_EPISODE, 1)
+        val startEpisode = intent.getEpisodeExtra(EXTRA_EPISODE, 1.0)
         val animeTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val thumbnail = intent.getStringExtra(EXTRA_THUMBNAIL).orEmpty()
         val app = application as WebunimeApp
@@ -185,16 +187,16 @@ private enum class BottomSheet { None, Speed, Quality }
 @Composable
 private fun PlayerScreen(
     slug: String,
-    startEpisode: Int,
+    startEpisode: Double,
     animeTitle: String,
     thumbnail: String,
     app: WebunimeApp,
-    onBack: (episode: Int, title: String, thumbnail: String) -> Unit,
-    loadEpisode: suspend (String, Int) -> com.webunime.mobile.data.EpisodePlayback,
+    onBack: (episode: Double, title: String, thumbnail: String) -> Unit,
+    loadEpisode: suspend (String, Double) -> com.webunime.mobile.data.EpisodePlayback,
     loadAnime: suspend (String) -> com.webunime.mobile.data.AnimeDetail,
     onFullscreenChange: (Boolean) -> Unit,
 ) {
-    var currentEpisode by remember { mutableIntStateOf(startEpisode) }
+    var currentEpisode by remember { mutableStateOf(startEpisode) }
     var episodes by remember { mutableStateOf<List<EpisodeSummary>>(emptyList()) }
     var title by remember { mutableStateOf(animeTitle) }
     var cover by remember { mutableStateOf(thumbnail) }
@@ -270,7 +272,7 @@ private fun PlayerScreen(
             .onSuccess { payload ->
                 episodeTitle = payload.episode?.title
                     ?: payload.judul
-                    ?: "Episode $currentEpisode"
+                    ?: "Episode ${currentEpisode.toEpisodeLabel()}"
                 players = PlayerRouter.forPlayback(payload.episode?.players.orEmpty())
                 selectedServer = 0
                 if (players.isEmpty()) {
@@ -845,7 +847,7 @@ private fun PlayerScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    "$n",
+                                    n.toEpisodeLabel(),
                                     color = if (selected) Color.Black else Color.White,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -932,7 +934,7 @@ private fun Pill(
 private fun PlayerAnimeHeader(
     title: String,
     cover: String,
-    episode: Int,
+    episode: Double,
 ) {
     Row(
         Modifier
@@ -953,7 +955,7 @@ private fun PlayerAnimeHeader(
         Column(Modifier.weight(1f)) {
             Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Episode $episode", color = WuColors.Muted, fontSize = 12.sp)
+                Text("Episode ${episode.toEpisodeLabel()}", color = WuColors.Muted, fontSize = 12.sp)
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.Default.Visibility, null, tint = WuColors.Muted, modifier = Modifier.size(12.dp))
             }
