@@ -14,7 +14,7 @@ https://webunime-catalog-api.vercel.app
 - Rewarded AdMob (test ID) → +1 kunci; tukar 10 gem → 1 kunci
 - Premium: layar pilih paket + banner shimmer di beranda
 - **Subscribe anime** → FCM topic `anime_<slug>` + tab Subscribed
-- OTA: baca `update/version.json` di repo ini
+- OTA: baca `update/version.json` di repo ini (wajib `sha256` SHA-256 APK)
 
 ## Build release (OTA)
 
@@ -22,9 +22,26 @@ https://webunime-catalog-api.vercel.app
 cd "c:\Users\sjatm\OneDrive\Documents\Project professional\Weeboonime\mobile"
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleRelease
+.\gradlew.bat printReleaseApkSha256
 ```
 
 APK: `app/build/outputs/apk/release/app-release.apk`
+
+Setelah upload APK ke GitHub Releases, isi `update/version.json`:
+
+- `versionCode` / `versionName` harus sama dengan `app/build.gradle.kts`
+- `apkUrl` hanya boleh URL release repo ini (`.../releases/download/.../*.apk`)
+- `sha256` hasil `printReleaseApkSha256` (hash file yang di-upload, bukan file lain)
+
+Push `version.json` ke `main` **bersama** rilis. Tanpa `sha256` yang cocok, app tidak akan memasang update.
+
+Keystore production (opsional, memutus OTA dari APK debug-sign yang sudah terpasang):
+
+```powershell
+.\scripts\create-release-keystore.ps1
+```
+
+File `keystore.properties` dan `keystore/*.jks` tidak boleh di-commit. Backup ke tempat aman.
 
 ## Setup Firebase
 

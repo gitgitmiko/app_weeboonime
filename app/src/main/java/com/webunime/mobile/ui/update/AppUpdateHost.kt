@@ -34,6 +34,7 @@ fun AppUpdateHost(activity: ComponentActivity) {
     var available by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var dialogVisible by remember { mutableStateOf(false) }
     var pendingApk by remember { mutableStateOf<File?>(null) }
+    var pendingInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var downloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -50,11 +51,14 @@ fun AppUpdateHost(activity: ComponentActivity) {
         val observer = LifecycleEventObserver { _, event ->
             if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
             val apk = pendingApk
-            if (apk != null && apk.exists() && checker.canInstallPackages()) {
+            val info = pendingInfo
+            if (apk != null && info != null && apk.exists() && checker.canInstallPackages()) {
                 pendingApk = null
+                pendingInfo = null
                 Toast.makeText(activity, R.string.update_installing, Toast.LENGTH_SHORT).show()
-                runCatching { checker.installApk(activity, apk) }
+                runCatching { checker.installApk(activity, apk, info) }
                     .onFailure {
+                        apk.delete()
                         Toast.makeText(
                             activity,
                             activity.getString(R.string.update_failed, it.message ?: "install"),
@@ -82,8 +86,9 @@ fun AppUpdateHost(activity: ComponentActivity) {
                         dialogVisible = false
                         downloading = true
                         scope.launch {
-                            startDownload(activity, checker, info) { apk ->
+                            startDownload(activity, checker, info) { apk, readyInfo ->
                                 pendingApk = apk
+                                pendingInfo = readyInfo
                             }
                             downloading = false
                         }
@@ -105,13 +110,23 @@ private suspend fun startDownload(
     activity: ComponentActivity,
     checker: AppUpdateChecker,
     info: AppUpdateInfo,
-    onNeedPermission: (File) -> Unit,
+    onNeedPermission: (File, AppUpdateInfo) -> Unit,
 ) {
     val latest = runCatching { checker.fetchAvailableUpdate() }.getOrNull()
     val toInstall = when {
         latest == null -> info
         latest.versionCode >= info.versionCode -> latest
         else -> info
+    }
+    if (!AppUpdateChecker.isTrustedManifest(toInstall)) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.update_failed, "manifest tidak sah"),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+        return
     }
 
     val progressToast = Toast.makeText(activity, "", Toast.LENGTH_SHORT)
@@ -135,7 +150,7 @@ private suspend fun startDownload(
 
     if (activity.isFinishing) return
     if (!checker.canInstallPackages()) {
-        onNeedPermission(apk)
+        onNeedPermission(apk, toInstall)
         withContext(Dispatchers.Main) {
             Toast.makeText(activity, R.string.update_need_permission, Toast.LENGTH_LONG).show()
             checker.openInstallPermissionSettings(activity)
@@ -145,8 +160,9 @@ private suspend fun startDownload(
 
     withContext(Dispatchers.Main) {
         Toast.makeText(activity, R.string.update_installing, Toast.LENGTH_SHORT).show()
-        runCatching { checker.installApk(activity, apk) }
+        runCatching { checker.installApk(activity, apk, toInstall) }
             .onFailure {
+                apk.delete()
                 Toast.makeText(
                     activity,
                     activity.getString(R.string.update_failed, it.message ?: "install"),

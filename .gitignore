@@ -16,6 +16,11 @@ app/src/src/
 node_modules/
 functions/node_modules/
 
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
 *.idsig
 WhatsApp Image*.jpeg
 WhatsApp Image*.jpg

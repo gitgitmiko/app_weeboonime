@@ -1,4 +1,7 @@
-﻿plugins {
+﻿import java.security.MessageDigest
+import java.util.Properties
+
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -43,14 +46,28 @@ android {
     }
 
     signingConfigs {
-        // Samakan dengan APK lama (Android Debug) supaya OTA/update tidak "package invalid".
-        // Ganti ke keystore production sendiri sebelum publish Play Store.
         create("release") {
-            val debugKs = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storeFile = debugKs
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val keystoreProps = rootProject.file("keystore.properties")
+            if (keystoreProps.exists()) {
+                val props = Properties().apply {
+                    keystoreProps.inputStream().use { load(it) }
+                }
+                storeFile = rootProject.file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            } else {
+                // Fallback: debug keystore agar OTA ke user lama tidak "package invalid".
+                // Untuk production, buat keystore.properties (lihat keystore.properties.example).
+                logger.warn(
+                    "keystore.properties tidak ada — APK release masih ditandatangani debug keystore.",
+                )
+                val debugKs = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storeFile = debugKs
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
@@ -116,4 +133,28 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.android.billingclient:billing-ktx:7.1.1")
+}
+
+tasks.register("printReleaseApkSha256") {
+    group = "publishing"
+    description = "Cetak SHA-256 APK release untuk diisi ke update/version.json"
+    doLast {
+        val apk = file("build/outputs/apk/release/app-release.apk")
+        check(apk.exists()) {
+            "APK belum ada. Jalankan assembleRelease dulu: ${apk.absolutePath}"
+        }
+        val md = MessageDigest.getInstance("SHA-256")
+        apk.inputStream().use { input ->
+            val buf = ByteArray(64 * 1024)
+            var n: Int
+            while (input.read(buf).also { n = it } >= 0) {
+                md.update(buf, 0, n)
+            }
+        }
+        val hex = md.digest().joinToString("") { "%02x".format(it) }
+        println("file   = ${apk.name}")
+        println("size   = ${apk.length()}")
+        println("sha256 = $hex")
+        println("Salin nilai sha256 ke update/version.json (huruf kecil).")
+    }
 }
