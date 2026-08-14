@@ -175,9 +175,7 @@ class MainActivity : ComponentActivity() {
                                 launch {
                                     val uid = app.authRepository.currentUser?.uid
                                     runCatching {
-                                        app.userRepository.bindToAccount(uid)
-                                        app.episodeUnlocks.bindToAccount(uid)
-                                        app.watchHistory.bindToAccount(uid)
+                                        app.bindSignedInUser(uid)
                                         val subs = app.userRepository.current().animeSubs
                                         com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(
                                             subs,

@@ -58,9 +58,7 @@ fun AccountScreen(
             val res = app.authRepository.handleGoogleSignInResult(result.data)
             res.onSuccess {
                 val uid = app.authRepository.currentUser?.uid
-                app.userRepository.bindToAccount(uid)
-                app.episodeUnlocks.bindToAccount(uid)
-                app.watchHistory.bindToAccount(uid)
+                app.bindSignedInUser(uid)
                 val subs = app.userRepository.current().animeSubs
                 com.webunime.mobile.data.fcm.FcmTopicManager.syncTopics(subs, emptyList())
                 message = "Login berhasil"
@@ -115,9 +113,7 @@ fun AccountScreen(
                         val subs = app.userRepository.current().animeSubs
                         com.webunime.mobile.data.fcm.FcmTopicManager.clearAll(subs)
                         app.authRepository.signOut(activity)
-                        app.userRepository.bindToAccount(null)
-                        app.episodeUnlocks.bindToAccount(null)
-                        app.watchHistory.bindToAccount(null)
+                        app.bindSignedInUser(null)
                         app.session.logout()
                         app.nowPlaying.clear()
                         onLogout()

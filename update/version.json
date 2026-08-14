@@ -1,7 +1,7 @@
 ﻿{
-  "versionCode": 26,
-  "versionName": "0.3.5",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.5/Weeboonime-v0.3.5.apk",
-  "sha256": "e410a010bc97bf7e362d103b5a87114ce2f132206fa501a9448d33d31a618136",
-  "changelog": "Beranda Top Anime + Hot Anime, tombol Premium di halaman nonton membuka paket."
+  "versionCode": 27,
+  "versionName": "0.3.6",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.6/Weeboonime-v0.3.6.apk",
+  "sha256": "04f453cb126dc1babdcdce76de959044f9007036741ed68e240e723d18ee381f",
+  "changelog": "Kunci episode ikut akun Google di HP baru. Update OTA lebih aman."
 }

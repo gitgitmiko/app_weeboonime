@@ -71,9 +71,7 @@ class WebunimeApp : Application() {
             userRepository.ensureBootstrapped()
             val uid = authRepository.currentUser?.uid
             runCatching {
-                userRepository.bindToAccount(uid)
-                episodeUnlocks.bindToAccount(uid)
-                watchHistory.bindToAccount(uid)
+                bindSignedInUser(uid)
                 if (uid != null) {
                     val subs = userRepository.current().animeSubs
                     FcmTopicManager.syncTopics(subs, emptyList())
@@ -98,5 +96,21 @@ class WebunimeApp : Application() {
 
     fun launchIo(block: suspend () -> Unit) {
         appScope.launch(Dispatchers.IO) { block() }
+    }
+
+    /** Login / ganti akun / logout: ekonomi + unlock episode + riwayat nonton. */
+    suspend fun bindSignedInUser(uid: String?) {
+        userRepository.bindToAccount(uid)
+        episodeUnlocks.bindToAccount(uid)
+        watchHistory.bindToAccount(uid)
+        if (!uid.isNullOrBlank()) {
+            episodeUnlocks.mergeKeys(
+                watchHistory.list().mapNotNull { item ->
+                    val ep = item.episode ?: return@mapNotNull null
+                    if (item.slug.isBlank() || ep <= 0.0) null
+                    else EpisodeUnlockStore.key(item.slug, ep)
+                }.toSet(),
+            )
+        }
     }
 }

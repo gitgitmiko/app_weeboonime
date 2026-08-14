@@ -163,6 +163,9 @@ class UserRepository(private val context: Context) {
         if (before.effectivePremium(now)) {
             return Result.success(before)
         }
+        if (alreadyUnlockedInCloud(slug, episode)) {
+            return Result.success(before)
+        }
         if (before.keys <= 0) {
             return Result.failure(IllegalStateException("Kunci habis"))
         }
@@ -241,6 +244,19 @@ class UserRepository(private val context: Context) {
     suspend fun pullCloudIfSignedIn() {
         val uid = auth?.currentUser?.uid ?: return
         bindToAccount(uid)
+    }
+
+    private suspend fun alreadyUnlockedInCloud(slug: String, episode: Double): Boolean {
+        val uid = auth?.currentUser?.uid ?: return false
+        val firestore = db ?: return false
+        val snap = withTimeoutOrNull(3_000L) {
+            firestore.collection("users").document(uid)
+                .collection("unlocks")
+                .document("$slug#${episode.toEpisodeKey()}")
+                .get()
+                .await()
+        } ?: return false
+        return snap.exists()
     }
 
     private suspend fun loadCloudForCurrentUser(overwriteLocal: Boolean) {
