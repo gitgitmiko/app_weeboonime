@@ -107,12 +107,14 @@ import com.webunime.mobile.data.PlayerRouter
 import com.webunime.mobile.data.PlayerServer
 import com.webunime.mobile.data.user.EpisodeEngagement
 import com.webunime.mobile.data.user.EpisodeEngagementRepository
+import com.webunime.mobile.data.user.EpisodeUnlockStore
 import com.webunime.mobile.data.user.EpisodeVote
 import com.webunime.mobile.data.user.PlaybackReportDraft
 import com.webunime.mobile.data.user.PlaybackReportReason
 import com.webunime.mobile.data.user.PlaybackReportRepository
 import com.webunime.mobile.data.getEpisodeExtra
 import com.webunime.mobile.data.toEpisodeLabel
+import com.webunime.mobile.ui.detail.KeysEmptyDialog
 import com.webunime.mobile.ui.premium.PremiumPackageScreen
 import com.webunime.mobile.ui.theme.WebunimeTheme
 import com.webunime.mobile.ui.theme.WuColors
@@ -239,6 +241,34 @@ private fun PlayerScreen(
     val profile by app.userRepository.profileFlow.collectAsStateWithLifecycle(initialValue = null)
     val isPremium = profile?.effectivePremium() == true
     val signedInUid = profile?.uid
+    val scope = rememberCoroutineScope()
+    val unlocks by app.episodeUnlocks.unlocksFlow.collectAsStateWithLifecycle(initialValue = emptySet())
+    var showKeysEmpty by remember { mutableStateOf(false) }
+    var pendingLockedEpisode by remember { mutableStateOf<Double?>(null) }
+    val activity = context as android.app.Activity
+
+    fun episodeUnlocked(n: Double): Boolean =
+        isPremium || unlocks.contains(EpisodeUnlockStore.key(slug, n))
+
+    fun openEpisode(n: Double) {
+        if (n == currentEpisode) return
+        scope.launch {
+            if (episodeUnlocked(n) || app.episodeUnlocks.isUnlocked(slug, n)) {
+                currentEpisode = n
+                return@launch
+            }
+            val res = app.userRepository.consumeKeyForEpisode(slug, n)
+            res.onSuccess {
+                app.episodeUnlocks.markUnlocked(slug, n)
+                runCatching { app.userRepository.grantEpisodeXp() }
+                currentEpisode = n
+            }.onFailure {
+                pendingLockedEpisode = n
+                showKeysEmpty = true
+                app.rewardedAds.preload()
+            }
+        }
+    }
     val engagement by remember(slug, currentEpisode, signedInUid) {
         app.episodeEngagement.statsFlow(slug, currentEpisode)
     }.collectAsStateWithLifecycle(initialValue = EpisodeEngagement())
@@ -276,7 +306,10 @@ private fun PlayerScreen(
     }
 
     BackHandler {
-        if (showPremium) {
+        if (showKeysEmpty) {
+            showKeysEmpty = false
+            pendingLockedEpisode = null
+        } else if (showPremium) {
             showPremium = false
         } else if (fullscreen) {
             fullscreen = false
@@ -385,7 +418,7 @@ private fun PlayerScreen(
                     }
                 }
                 if (playbackState == Player.STATE_ENDED && autoNext) {
-                    nextEpisode?.let { currentEpisode = it }
+                    nextEpisode?.let { openEpisode(it) }
                 }
             }
         }
@@ -546,7 +579,7 @@ private fun PlayerScreen(
                             enabled = prevEpisode != null,
                             size = 40.dp,
                         ) {
-                            prevEpisode?.let { currentEpisode = it }
+                            prevEpisode?.let { openEpisode(it) }
                         }
                         TransportButton(
                             icon = Icons.Default.Replay10,
@@ -596,7 +629,7 @@ private fun PlayerScreen(
                             enabled = nextEpisode != null,
                             size = 40.dp,
                         ) {
-                            nextEpisode?.let { currentEpisode = it }
+                            nextEpisode?.let { openEpisode(it) }
                         }
                     }
 
@@ -768,9 +801,7 @@ private fun PlayerScreen(
         }
 
         if (!fullscreen) {
-            val unlocks by app.episodeUnlocks.unlocksFlow.collectAsStateWithLifecycle(initialValue = emptySet())
             var synopsisExpanded by remember { mutableStateOf(false) }
-            val scope = rememberCoroutineScope()
 
             LazyColumn(
                 Modifier
@@ -910,11 +941,7 @@ private fun PlayerScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(nums) { n ->
-                            val unlocked = isPremium ||
-                                unlocks.contains(
-                                    com.webunime.mobile.data.user.EpisodeUnlockStore.key(slug, n),
-                                ) ||
-                                n == currentEpisode
+                            val unlocked = episodeUnlocked(n) || n == currentEpisode
                             val selected = n == currentEpisode
                             Box(
                                 Modifier
@@ -923,21 +950,7 @@ private fun PlayerScreen(
                                     .background(
                                         if (selected) Color.White else Color(0xFF2B2C2F),
                                     )
-                                    .clickable {
-                                        if (n == currentEpisode) return@clickable
-                                        if (unlocked || isPremium) {
-                                            currentEpisode = n
-                                        } else {
-                                            scope.launch {
-                                                val res = app.userRepository.consumeKeyForEpisode(slug, n)
-                                                res.onSuccess {
-                                                    app.episodeUnlocks.markUnlocked(slug, n)
-                                                    runCatching { app.userRepository.grantEpisodeXp() }
-                                                    currentEpisode = n
-                                                }
-                                            }
-                                        }
-                                    },
+                                    .clickable { openEpisode(n) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -998,6 +1011,39 @@ private fun PlayerScreen(
                         Toast.LENGTH_LONG,
                     ).show()
                 }
+            },
+        )
+    }
+
+    if (showKeysEmpty) {
+        KeysEmptyDialog(
+            onBuyPremium = {
+                showKeysEmpty = false
+                pendingLockedEpisode = null
+                showPremium = true
+            },
+            onWatchAd = {
+                scope.launch {
+                    val ok = app.rewardedAds.show(activity)
+                    if (ok) {
+                        app.userRepository.grantKeys(1)
+                        val ep = pendingLockedEpisode
+                        showKeysEmpty = false
+                        pendingLockedEpisode = null
+                        if (ep != null) openEpisode(ep)
+                    } else {
+                        app.rewardedAds.preload()
+                        Toast.makeText(
+                            context,
+                            "Iklan belum siap, coba lagi",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            },
+            onDismiss = {
+                showKeysEmpty = false
+                pendingLockedEpisode = null
             },
         )
     }

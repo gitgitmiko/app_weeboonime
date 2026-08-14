@@ -1,7 +1,7 @@
 ﻿{
-  "versionCode": 28,
-  "versionName": "0.3.7",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.7/Weeboonime-v0.3.7.apk",
-  "sha256": "b0a8904e7b010f763e9f77b67e67a2dd452bfe3a91428473f923ff630160efe8",
-  "changelog": "Ikon kunci jadi gulungan jurus, gem jadi lambang daun."
+  "versionCode": 29,
+  "versionName": "0.3.8",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.8/Weeboonime-v0.3.8.apk",
+  "sha256": "28893d4d7ef3ac7be9cfa63940be4b97c992c4c0ccc86a34f80c382d09808858",
+  "changelog": "Episode terkunci di halaman nonton bisa diklik: pakai kunci, atau dialog Premium/iklan jika habis."
 }

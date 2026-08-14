@@ -583,7 +583,7 @@ private fun EpisodeRow(
                 .weight(1f)
                 .clip(RoundedCornerShape(14.dp))
                 .background(WuColors.Surface)
-                .clickable(enabled = unlocked, onClick = onOpen)
+                .clickable(onClick = onOpen)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             Text("Episode ${n.toEpisodeLabel()}", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
