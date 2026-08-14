@@ -4,21 +4,32 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Gem / diamond -->
+    <!-- Gem = lambang daun desa ninja (orisinal, bukan merek anime) -->
     <path
-        android:fillColor="#4FC3F7"
-        android:pathData="M12,2L3,9l9,13 9,-13z" />
+        android:fillColor="#F0B429"
+        android:pathData="M12,1.8A10.2,10.2 0,1,1 12,22.2A10.2,10.2 0,1,1 12,1.8Z" />
     <path
-        android:fillColor="#81D4FA"
-        android:pathData="M12,2L7.5,9h9z" />
+        android:fillColor="#FFF6D0"
+        android:pathData="M12,3.4A8.6,8.6 0,1,1 12,20.6A8.6,8.6 0,1,1 12,3.4Z" />
     <path
-        android:fillColor="#0288D1"
-        android:pathData="M3,9l9,13 0,-7z" />
+        android:fillColor="#E8A317"
+        android:pathData="M12,4.3A7.7,7.7 0,1,1 12,19.7A7.7,7.7 0,1,1 12,4.3Z" />
     <path
-        android:fillColor="#29B6F6"
-        android:pathData="M21,9l-9,13 0,-7z" />
+        android:fillColor="#FFF3C0"
+        android:pathData="M12,5.2C16.4,8.4 19.1,12.2 18.4,15.6C17.8,18.1 15.2,19.8 12,19.9C8.8,19.8 6.2,18.1 5.6,15.6C4.9,12.2 7.6,8.4 12,5.2Z" />
     <path
-        android:fillColor="#E1F5FE"
-        android:pathData="M7.5,9h9L12,2z"
-        android:fillAlpha="0.55" />
+        android:fillColor="#C67A00"
+        android:pathData="M11.35,7.1h1.3v11.2h-1.3z" />
+    <path
+        android:fillColor="#C67A00"
+        android:pathData="M12,9.6L8.7,11.7 8.1,10.8 12,8.4z" />
+    <path
+        android:fillColor="#C67A00"
+        android:pathData="M12,9.6L15.3,11.7 15.9,10.8 12,8.4z" />
+    <path
+        android:fillColor="#C67A00"
+        android:pathData="M12,13.4L8.9,15.4 8.3,14.5 12,12.2z" />
+    <path
+        android:fillColor="#C67A00"
+        android:pathData="M12,13.4L15.1,15.4 15.7,14.5 12,12.2z" />
 </vector>

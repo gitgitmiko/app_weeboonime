@@ -1,7 +1,7 @@
 ﻿{
-  "versionCode": 27,
-  "versionName": "0.3.6",
-  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.6/Weeboonime-v0.3.6.apk",
-  "sha256": "04f453cb126dc1babdcdce76de959044f9007036741ed68e240e723d18ee381f",
-  "changelog": "Kunci episode ikut akun Google di HP baru. Update OTA lebih aman."
+  "versionCode": 28,
+  "versionName": "0.3.7",
+  "apkUrl": "https://github.com/gitgitmiko/app_weeboonime/releases/download/v0.3.7/Weeboonime-v0.3.7.apk",
+  "sha256": "b0a8904e7b010f763e9f77b67e67a2dd452bfe3a91428473f923ff630160efe8",
+  "changelog": "Ikon kunci jadi gulungan jurus, gem jadi lambang daun."
 }
